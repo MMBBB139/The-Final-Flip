@@ -16,7 +16,6 @@ public class BattleManager : MonoBehaviour
     public Button stopButton;          // 新增：停手按钮
     public RectTransform drawPileVisual;
     public GameObject cardUIPrefab;
-    public TextMeshProUGUI comboText;
 
     [Header("UI References - 数值面板")]
     public TextMeshProUGUI attackText;
@@ -73,7 +72,6 @@ public class BattleManager : MonoBehaviour
         }
         handCards.Clear();
         currentAttack = 0;
-        comboText.text = "";
 
         // 从本层牌库复制一份作为本回合抽牌堆，并洗牌
         drawPile = new List<RuntimeCard>(levelDeck);
@@ -131,8 +129,8 @@ public class BattleManager : MonoBehaviour
     {
         if (card.color == CardColor.Yellow)
         {
-            // 黄牌：扣3点血
-            playerHp -= 3;
+            // 黄牌：扣2点血
+            playerHp -= 2;
         }
         else if (card.color == CardColor.Red)
         {
@@ -173,7 +171,7 @@ public class BattleManager : MonoBehaviour
         StartCoroutine(ShowExplosionFeedback());
 
         // 爆牌惩罚：死
-        DelayedDefeat();
+         StartCoroutine(DelayedDefeatRoutine());
     }
 
     private IEnumerator ShowExplosionFeedback()
@@ -195,30 +193,10 @@ public class BattleManager : MonoBehaviour
         drawButton.interactable = false;
         stopButton.interactable = false;
 
-        // 1. 计算牌型加成
-        PokerHandType finalHand;
-        int handBonus = PokerHandEvaluator.GetHandBonus(handCards, out finalHand);
-
-        int totalDamage = currentAttack + handBonus;
-
-        // 2. UI 演出展示（如果有加成的话）
-        if (finalHand != PokerHandType.HighCard)
-        {
-            string handName = PokerHandEvaluator.GetHandName(finalHand);
-            comboText.text = $"<color=yellow>{handName}</color> +{handBonus}!";
-            Debug.Log($"结算牌型：{handName}，获得额外伤害 {handBonus}");
-        }
-        else
-        {
-            comboText.text = ""; // 没有加成就不显示
-        }
-
-        // 3. 对Boss造成伤害 (使用总伤害)
-        bossHp -= totalDamage;
+        bossHp -= currentAttack;
         if (bossHp < 0) bossHp = 0;
         UpdateAllUI();
 
-        // 4. 判定胜负或进入下一回合
         if (bossHp <= 0)
         {
             GameOver(true);
@@ -242,13 +220,13 @@ public class BattleManager : MonoBehaviour
         yield return new WaitForSeconds(1.0f); // 停顿一秒让玩家看清伤害
         StartNewTurn();
     }
-    private IEnumerator DelayedVictory()
+    private IEnumerator DelayedVictoryRoutine()
     {
         yield return new WaitForSeconds(1.2f);
         GameOver(true);
     }
 
-    private IEnumerator DelayedDefeat()
+    private IEnumerator DelayedDefeatRoutine()
     {
         yield return new WaitForSeconds(1.2f);
         GameOver(false);
