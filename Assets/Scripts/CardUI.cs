@@ -1,7 +1,7 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro; // 如果你用的是TextMeshPro
+using TMPro;
 
 public class CardUI : MonoBehaviour
 {
@@ -39,6 +39,9 @@ public class CardUI : MonoBehaviour
         else if (cardData.baseData.rank == 13) rankStr = "K";
         else if (cardData.baseData.rank == 14) rankStr = "A";
         rankText.text = rankStr;
+
+        // 3. 设置花色符号
+        suitText.text = GetSuitSymbol(cardData.baseData.suit);
     }
 
     // 从牌堆飞入手牌区的动画
