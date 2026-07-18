@@ -94,6 +94,14 @@ public class BattleManager : MonoBehaviour
         StartCoroutine(battleUI.ShowExplosionFeedback());
         data.playerHp -= 2;
         data.currentAttack = 0;
+
+        // 爆牌扣血后检查玩家是否死亡
+        if (data.isPlayerDead)
+        {
+            StartCoroutine(DelayedEnd(false));
+            return;
+        }
+
         OnStopClicked();
     }
 
