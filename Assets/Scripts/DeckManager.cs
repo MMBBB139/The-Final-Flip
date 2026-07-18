@@ -3,53 +3,75 @@ using System.Collections.Generic;
 
 public class DeckManager : MonoBehaviour
 {
-    [Header("Data Config")]
-    public List<CardData> all52Cards; // 在Inspector中拖入52张基础牌的SO
+    // 三色牌的数值范围定义
+    private static readonly Dictionary<CardColor, (int min, int max)> ColorRanges = new()
+    {
+        { CardColor.Blue, (5, 14) },
+        { CardColor.Yellow, (6, 19) },
+        { CardColor.Red, (11, 24) }
+    };
 
+    // 初始牌组颜色比例
+    private static readonly Dictionary<CardColor, float> ColorRatios = new()
+    {
+        { CardColor.Blue, 0.50f },
+        { CardColor.Yellow, 0.33f },
+        { CardColor.Red, 0.17f }
+    };
+
+    /// <summary>
+    /// 生成初始牌组（纯代码，不需要任何SO）
+    /// </summary>
     public List<RuntimeCard> GenerateInitialDeck(int totalCards = 12)
     {
         List<RuntimeCard> deck = new List<RuntimeCard>();
 
-        // 1. 根据当前总牌数计算颜色比例
-        int blueCount = Mathf.RoundToInt(totalCards * 0.50f);
-        int yellowCount = Mathf.RoundToInt(totalCards * 0.33f);
-        int redCount = totalCards - blueCount - yellowCount; // 剩余全给红色，保证总数严丝合缝
+        // 1. 计算各颜色数量
+        int blueCount = Mathf.RoundToInt(totalCards * ColorRatios[CardColor.Blue]);
+        int yellowCount = Mathf.RoundToInt(totalCards * ColorRatios[CardColor.Yellow]);
+        int redCount = totalCards - blueCount - yellowCount;
 
-        // 2. 构建颜色池并打乱
-        List<CardColor> colorPool = new List<CardColor>();
-        for (int i = 0; i < blueCount; i++) colorPool.Add(CardColor.Blue);
-        for (int i = 0; i < yellowCount; i++) colorPool.Add(CardColor.Yellow);
-        for (int i = 0; i < redCount; i++) colorPool.Add(CardColor.Red);
-        
-        ShuffleList(colorPool);
+        // 2. 按颜色生成牌
+        GenerateCardsOfColor(deck, CardColor.Blue, blueCount);
+        GenerateCardsOfColor(deck, CardColor.Yellow, yellowCount);
+        GenerateCardsOfColor(deck, CardColor.Red, redCount);
 
-        // 3. 从52张基础牌中随机抽取指定数量的牌
-        // 此处复制一份全集，避免破坏原列表
-        List<CardData> tempCardPool = new List<CardData>(all52Cards);
-        ShuffleList(tempCardPool);
-
-        // 4. 组装运行时牌堆
-        for (int i = 0; i < totalCards; i++)
-        {
-            // 如果玩家修改导致牌堆上限超过52，这里需要加个越界保护或者重新洗入tempCardPool
-            CardData selectedData = tempCardPool[i];
-            CardColor assignedColor = colorPool[i];
-
-            deck.Add(new RuntimeCard(selectedData, assignedColor));
-        }
+        // 3. 洗牌
+        ShuffleList(deck);
 
         return deck;
     }
 
-    // 通用洗牌算法 (Fisher-Yates)
+    /// <summary>
+    /// 生成指定颜色和数量的牌
+    /// </summary>
+    private void GenerateCardsOfColor(List<RuntimeCard> deck, CardColor color, int count)
+    {
+        var (min, max) = ColorRanges[color];
+        for (int i = 0; i < count; i++)
+        {
+            int rank = Random.Range(min, max + 1);
+            deck.Add(new RuntimeCard(color, rank));
+        }
+    }
+
+    /// <summary>
+    /// 生成一张指定颜色的随机牌（用于层间奖励加入新牌）
+    /// </summary>
+    public RuntimeCard GenerateRandomCard(CardColor color)
+    {
+        var (min, max) = ColorRanges[color];
+        int rank = Random.Range(min, max + 1);
+        return new RuntimeCard(color, rank);
+    }
+
+    // Fisher-Yates洗牌
     private void ShuffleList<T>(List<T> list)
     {
         for (int i = list.Count - 1; i > 0; i--)
         {
             int randomIndex = Random.Range(0, i + 1);
-            T temp = list[i];
-            list[i] = list[randomIndex];
-            list[randomIndex] = temp;
+            (list[i], list[randomIndex]) = (list[randomIndex], list[i]);
         }
     }
 }

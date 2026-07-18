@@ -2587,6 +2587,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1530239053}
   - component: {fileID: 1530239054}
+  - component: {fileID: 1530239055}
   m_Layer: 0
   m_Name: BattleManager
   m_TagString: Untagged
@@ -2622,12 +2623,21 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BattleManager
   deckManager: {fileID: 507481111}
-  handArea: {fileID: 405348814}
+  battleUI: {fileID: 1530239055}
   drawButton: {fileID: 895366076}
   stopButton: {fileID: 1269560115}
-  drawPileVisual: {fileID: 1750321955}
-  cardUIPrefab: {fileID: 8544270778616590629, guid: ba593212dc44c234e8ef251f5b3cb4ba, type: 3}
-  comboText: {fileID: 0}
+--- !u!114 &1530239055
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1530239052}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b7d5b6138a955264783ff9c58569ef9b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BattleUI
   attackText: {fileID: 1168159856}
   playerHpText: {fileID: 1639786393}
   curseText: {fileID: 1413528017}
@@ -2638,6 +2648,9 @@ MonoBehaviour:
   gameOverPanel: {fileID: 1905184230}
   gameOverTitle: {fileID: 1961224449}
   restartButton: {fileID: 472052283}
+  handArea: {fileID: 405348814}
+  drawPileVisual: {fileID: 1750321955}
+  cardUIPrefab: {fileID: 8544270778616590629, guid: ba593212dc44c234e8ef251f5b3cb4ba, type: 3}
 --- !u!1 &1639786391
 GameObject:
   m_ObjectHideFlags: 0
