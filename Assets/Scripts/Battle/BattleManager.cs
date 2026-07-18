@@ -63,6 +63,15 @@ public class BattleManager : MonoBehaviour
         isMainColorSelected = true;
         data.firstCardGuaranteed = true;
 
+        // 红主色：诅咒+2
+        if (color == CardColor.Red)
+        {
+            data.curseCount += 2;
+            // 检查是否触发诅咒
+            if (data.isCurseReady)
+                BattleRules.TriggerCursePenalty(data);
+        }
+
         StartNewTurn();
     }
 

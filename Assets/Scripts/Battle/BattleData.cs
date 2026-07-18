@@ -9,7 +9,6 @@ public class BattleData
     public List<RuntimeCard> drawPile;
     public List<RuntimeCard> handCards = new();
 
-    // 主色相关
     public CardColor? selectedMainColor = null;
     public CardColor bossWeaknessColor;
     public bool firstCardGuaranteed = true;
@@ -78,6 +77,7 @@ public class BattleData
     // 获取爆牌安全区大小
     public int GetSafeZoneSize()
     {
+        // 蓝主色安全区扩展至前6张
         if (selectedMainColor == CardColor.Blue)
             return 6;
         return 4;
