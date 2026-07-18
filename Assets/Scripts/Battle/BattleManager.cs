@@ -1,3 +1,4 @@
+// BattleManager.cs
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -16,31 +17,66 @@ public class BattleManager : MonoBehaviour
 
     private BattleData data;
     private bool isBusted;
+    private bool isMainColorSelected;
 
     void Start()
     {
         drawButton.onClick.AddListener(OnDrawClicked);
         stopButton.onClick.AddListener(OnStopClicked);
         battleUI.restartButton.onClick.AddListener(RestartGame);
+        battleUI.OnMainColorSelected += OnMainColorSelectedHandler;
 
         battleUI.explosionCanvasGroup.alpha = 0;
         battleUI.gameOverPanel.SetActive(false);
 
         data = new BattleData();
         data.levelDeck = deckManager.GenerateInitialDeck(12);
+
+        // 只在游戏开始时选一次主色
+        StartMainColorSelection();
+    }
+
+    // ==================== 主色选择 ====================
+    private void StartMainColorSelection()
+    {
+        isMainColorSelected = false;
+
+        // 第1层Boss固定黄牌弱点
+        data.bossWeaknessColor = CardColor.Yellow;
+
+        var probabilities = new Dictionary<CardColor, float>
+        {
+            { CardColor.Blue, 0.50f },
+            { CardColor.Yellow, 0.33f },
+            { CardColor.Red, 0.17f }
+        };
+
+        battleUI.ShowMainColorPanel(data.bossWeaknessColor, probabilities);
+
+        drawButton.interactable = false;
+        stopButton.interactable = false;
+    }
+
+    private void OnMainColorSelectedHandler(CardColor color)
+    {
+        data.selectedMainColor = color;
+        isMainColorSelected = true;
+        data.firstCardGuaranteed = true;
+
         StartNewTurn();
     }
 
     // ==================== 回合流程 ====================
     private void StartNewTurn()
     {
+        // 每回合重新生成带权重的抽牌堆
+        data.drawPile = BattleRules.GenerateWeightedDrawPile(data.levelDeck, data.selectedMainColor);
+        BattleRules.EnsureFirstCardIsMainColor(data.drawPile, data.selectedMainColor);
+
         battleUI.ClearHand();
         data.handCards.Clear();
         data.currentAttack = 0;
         isBusted = false;
-
-        data.drawPile = new List<RuntimeCard>(data.levelDeck);
-        BattleRules.ShuffleList(data.drawPile);
 
         drawButton.interactable = true;
         stopButton.interactable = true;
@@ -50,22 +86,24 @@ public class BattleManager : MonoBehaviour
     // ==================== 抽牌 ====================
     private void OnDrawClicked()
     {
-        if (isBusted || data.handCards.Count >= data.maxHandSize || data.drawPile.Count == 0)
+        if (!isMainColorSelected || isBusted || data.handCards.Count >= data.maxHandSize || data.drawPile.Count == 0)
             return;
 
         RuntimeCard drawn = data.drawPile[0];
         data.drawPile.RemoveAt(0);
         data.handCards.Add(drawn);
+        data.firstCardGuaranteed = false;
 
-        // 爆牌判定（优先级最高）
-        if (BattleRules.CheckExplosion(data.handCards.Count))
+        // 爆牌判定
+        if (BattleRules.CheckExplosion(data.handCards.Count, data.GetSafeZoneSize()))
         {
             HandleExplosion();
             return;
         }
 
         // 攻击力累加
-        data.currentAttack += drawn.GetAttackValue();
+        int mainColorBonus = data.GetMainColorBonus(drawn.color);
+        data.currentAttack += drawn.GetAttackValue() + mainColorBonus;
 
         // 颜色效果
         BattleRules.ApplyCardColorEffect(drawn, data);
@@ -81,7 +119,6 @@ public class BattleManager : MonoBehaviour
 
         battleUI.UpdateAllUI(data);
 
-        // 死亡判定（黄牌或红牌可能导致血量归零）
         if (data.isPlayerDead)
             StartCoroutine(DelayedEnd(false));
     }
@@ -95,7 +132,6 @@ public class BattleManager : MonoBehaviour
         data.playerHp -= 2;
         data.currentAttack = 0;
 
-        // 爆牌扣血后检查玩家是否死亡
         if (data.isPlayerDead)
         {
             StartCoroutine(DelayedEnd(false));
@@ -111,11 +147,12 @@ public class BattleManager : MonoBehaviour
         drawButton.interactable = false;
         stopButton.interactable = false;
 
-        // 造成伤害
-        data.bossHp -= data.currentAttack;
+        float weaknessMultiplier = 1.5f;
+        int finalDamage = Mathf.RoundToInt(data.currentAttack * weaknessMultiplier);
+        data.bossHp -= finalDamage;
+
         battleUI.UpdateAllUI(data);
 
-        // 结算判定
         if (data.isBossDead)
         {
             StartCoroutine(DelayedEnd(true));
@@ -131,10 +168,10 @@ public class BattleManager : MonoBehaviour
         }
     }
 
-    // ==================== 协程辅助 ====================
     private IEnumerator DelayNextTurn()
     {
         yield return new WaitForSeconds(1f);
+        // 直接开始新回合，不再重新选主色
         StartNewTurn();
     }
 
