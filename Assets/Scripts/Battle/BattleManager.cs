@@ -1,4 +1,3 @@
-// BattleManager.cs
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -17,7 +16,6 @@ public class BattleManager : MonoBehaviour
 
     private BattleData data;
     private bool isBusted;
-    private bool isMainColorSelected;
 
     void Start()
     {
@@ -32,14 +30,15 @@ public class BattleManager : MonoBehaviour
         data = new BattleData();
         data.levelDeck = deckManager.GenerateInitialDeck(12);
 
-        // 只在游戏开始时选一次主色
+        // 第一回合开始，先选主色
         StartMainColorSelection();
     }
 
     // ==================== 主色选择 ====================
     private void StartMainColorSelection()
     {
-        isMainColorSelected = false;
+        drawButton.interactable = false;
+        stopButton.interactable = false;
 
         // 第1层Boss固定黄牌弱点
         data.bossWeaknessColor = CardColor.Yellow;
@@ -52,22 +51,17 @@ public class BattleManager : MonoBehaviour
         };
 
         battleUI.ShowMainColorPanel(data.bossWeaknessColor, probabilities);
-
-        drawButton.interactable = false;
-        stopButton.interactable = false;
     }
 
     private void OnMainColorSelectedHandler(CardColor color)
     {
         data.selectedMainColor = color;
-        isMainColorSelected = true;
         data.firstCardGuaranteed = true;
 
         // 红主色：诅咒+2
         if (color == CardColor.Red)
         {
             data.curseCount += 2;
-            // 检查是否触发诅咒
             if (data.isCurseReady)
                 BattleRules.TriggerCursePenalty(data);
         }
@@ -95,7 +89,7 @@ public class BattleManager : MonoBehaviour
     // ==================== 抽牌 ====================
     private void OnDrawClicked()
     {
-        if (!isMainColorSelected || isBusted || data.handCards.Count >= data.maxHandSize || data.drawPile.Count == 0)
+        if (isBusted || data.handCards.Count >= data.maxHandSize || data.drawPile.Count == 0)
             return;
 
         RuntimeCard drawn = data.drawPile[0];
@@ -180,8 +174,8 @@ public class BattleManager : MonoBehaviour
     private IEnumerator DelayNextTurn()
     {
         yield return new WaitForSeconds(1f);
-        // 直接开始新回合，不再重新选主色
-        StartNewTurn();
+        // 每回合重新选主色
+        StartMainColorSelection();
     }
 
     private IEnumerator DelayedEnd(bool isWin)
