@@ -92,7 +92,9 @@ public class BattleManager : MonoBehaviour
         drawButton.interactable = false;
         battleUI.UpdateAllUI(data);
         StartCoroutine(battleUI.ShowExplosionFeedback());
-        StartCoroutine(DelayedEnd(false));
+        data.playerHp -= 2;
+        data.currentAttack = 0;
+        OnStopClicked();
     }
 
     // ==================== 停手 ====================
