@@ -1,4 +1,3 @@
-// BattleUI.cs
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -39,6 +38,14 @@ public class BattleUI : MonoBehaviour
     public RectTransform drawPileVisual;
     public GameObject cardUIPrefab;
 
+    // ========== 新增：牌堆信息UI ==========
+    [Header("牌堆信息")]
+    public GameObject drawPileInfoPanel;           // 牌堆信息面板（常驻显示）
+    public TextMeshProUGUI totalRemainingText;      // 总剩余张数
+    public TextMeshProUGUI blueRemainingText;       // 蓝牌剩余
+    public TextMeshProUGUI yellowRemainingText;     // 黄牌剩余
+    public TextMeshProUGUI redRemainingText;        // 红牌剩余
+
     public event Action<CardColor> OnMainColorSelected;
 
     private void Awake()
@@ -70,6 +77,10 @@ public class BattleUI : MonoBehaviour
         blueProbText.text = $"Rate: {probabilities[CardColor.Blue]:P0}";
         yellowProbText.text = $"Rate: {probabilities[CardColor.Yellow]:P0}";
         redProbText.text = $"Rate: {probabilities[CardColor.Red]:P0}";
+
+        // 主色选择时隐藏牌堆信息（还没开始抽牌）
+        if (drawPileInfoPanel != null)
+            drawPileInfoPanel.SetActive(false);
     }
 
     public void HideMainColorPanel()
@@ -86,10 +97,54 @@ public class BattleUI : MonoBehaviour
         turnText.text = $"Turn: {data.currentTurn}/{data.maxTurns}";
     }
 
+    // ========== 新增：更新牌堆剩余信息 ==========
+    public void UpdateDrawPileInfo(List<RuntimeCard> drawPile)
+    {
+        if (drawPileInfoPanel == null) return;
+
+        // 显示面板
+        drawPileInfoPanel.SetActive(true);
+
+        // 计算各颜色剩余数量
+        int blueCount = 0, yellowCount = 0, redCount = 0;
+        foreach (var card in drawPile)
+        {
+            switch (card.color)
+            {
+                case CardColor.Blue: blueCount++; break;
+                case CardColor.Yellow: yellowCount++; break;
+                case CardColor.Red: redCount++; break;
+            }
+        }
+
+        // 更新文本
+        if (totalRemainingText != null)
+            totalRemainingText.text = $"{drawPile.Count}";
+
+        if (blueRemainingText != null)
+            blueRemainingText.text = $"<color=blue>{blueCount}</color>";
+
+        if (yellowRemainingText != null)
+            yellowRemainingText.text = $"<color=yellow>{yellowCount}</color>";
+
+        if (redRemainingText != null)
+            redRemainingText.text = $"<color=red>{redCount}</color>";
+    }
+
+    // 隐藏牌堆信息（回合结束/爆牌时调用）
+    public void HideDrawPileInfo()
+    {
+        if (drawPileInfoPanel != null)
+            drawPileInfoPanel.SetActive(false);
+    }
+
     public void ShowGameOver(bool isWin)
     {
         gameOverPanel.SetActive(true);
         gameOverTitle.text = isWin ? "<color=green>Victory!</color>" : "<color=red>Defeat!</color>";
+
+        // 游戏结束隐藏牌堆信息
+        HideDrawPileInfo();
     }
 
     public GameObject CreateCardUI(RuntimeCard card)

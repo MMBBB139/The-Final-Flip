@@ -30,6 +30,9 @@ public class BattleManager : MonoBehaviour
         data = new BattleData();
         data.levelDeck = deckManager.GenerateInitialDeck(12);
 
+        // 初始隐藏牌堆信息（等选完主色才显示）
+        battleUI.HideDrawPileInfo();
+
         // 第一回合开始，先选主色
         StartMainColorSelection();
     }
@@ -84,6 +87,9 @@ public class BattleManager : MonoBehaviour
         drawButton.interactable = true;
         stopButton.interactable = true;
         battleUI.UpdateAllUI(data);
+
+        // ========== 新增：回合开始时显示牌堆信息 ==========
+        battleUI.UpdateDrawPileInfo(data.drawPile);
     }
 
     // ==================== 抽牌 ====================
@@ -96,6 +102,9 @@ public class BattleManager : MonoBehaviour
         data.drawPile.RemoveAt(0);
         data.handCards.Add(drawn);
         data.firstCardGuaranteed = false;
+
+        // ========== 新增：抽牌后实时更新牌堆信息 ==========
+        battleUI.UpdateDrawPileInfo(data.drawPile);
 
         // 爆牌判定
         if (BattleRules.CheckExplosion(data.handCards.Count, data.GetSafeZoneSize()))
@@ -131,6 +140,10 @@ public class BattleManager : MonoBehaviour
         isBusted = true;
         drawButton.interactable = false;
         battleUI.UpdateAllUI(data);
+
+        // ========== 新增：爆牌时隐藏牌堆信息 ==========
+        battleUI.HideDrawPileInfo();
+
         StartCoroutine(battleUI.ShowExplosionFeedback());
         data.playerHp -= 2;
         data.currentAttack = 0;
@@ -149,6 +162,9 @@ public class BattleManager : MonoBehaviour
     {
         drawButton.interactable = false;
         stopButton.interactable = false;
+
+        // ========== 新增：停手时隐藏牌堆信息 ==========
+        battleUI.HideDrawPileInfo();
 
         float weaknessMultiplier = 1.5f;
         int finalDamage = Mathf.RoundToInt(data.currentAttack * weaknessMultiplier);
