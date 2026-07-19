@@ -1,4 +1,3 @@
-// BattleData.cs
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -56,7 +55,10 @@ public class BattleData
 
     public bool isPlayerDead => playerHp <= 0;
     public bool isBossDead => bossHp <= 0;
-    public bool isMaxTurnsReached => currentTurn > maxTurns;
+
+    // 【Bug修复：这里由 > 改为 >=】4回合为限制，如果第4回合结束（停手）仍未胜利，立即满足最大回合条件，游戏结束
+    public bool isMaxTurnsReached => currentTurn >= maxTurns;
+
     public bool isCurseReady => curseCount >= curseThreshold;
 
     // 获取主色攻击力加成

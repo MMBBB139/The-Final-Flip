@@ -113,9 +113,13 @@ public class BattleManager : MonoBehaviour
             return;
         }
 
-        // 攻击力累加
+        // 计算单张牌的攻击力
         int mainColorBonus = data.GetMainColorBonus(drawn.color);
-        data.currentAttack += drawn.GetAttackValue() + mainColorBonus;
+        int cardAttack = drawn.GetAttackValue() + mainColorBonus;
+
+        // 【Bug修复：移除抽牌时的1.5倍计算，将其移至OnStopClicked结算阶段】
+
+        data.currentAttack += cardAttack;
 
         // 颜色效果
         BattleRules.ApplyCardColorEffect(drawn, data);
@@ -166,9 +170,28 @@ public class BattleManager : MonoBehaviour
         // 停手时隐藏牌堆信息
         battleUI.HideDrawPileInfo();
 
-        // 玩家攻击Boss
-        float weaknessMultiplier = 1.5f;
-        int finalDamage = Mathf.RoundToInt(data.currentAttack * weaknessMultiplier);
+        // 【Bug修复：在这里进行伤害结算时，乘以Boss弱点倍率】
+        int finalDamage = data.currentAttack;
+
+        // 如果没有爆牌，则计算所有打出弱点颜色牌的加成（符合“最后结算”规则）
+        if (!isBusted)
+        {
+            float weaknessMultiplier = 1.5f;
+            int weaknessBonusDamage = 0;
+
+            foreach (var card in data.handCards)
+            {
+                if (card.color == data.bossWeaknessColor)
+                {
+                    int cardAtk = card.GetAttackValue() + data.GetMainColorBonus(card.color);
+                    // 累加额外的那0.5倍伤害
+                    weaknessBonusDamage += Mathf.RoundToInt(cardAtk * (weaknessMultiplier - 1f));
+                }
+            }
+            finalDamage += weaknessBonusDamage;
+            data.currentAttack = finalDamage; // 更新面板，让玩家看得到加成后的最终攻击力
+        }
+
         data.bossHp -= finalDamage;
 
         battleUI.UpdateAllUI(data);
@@ -177,6 +200,7 @@ public class BattleManager : MonoBehaviour
         {
             StartCoroutine(DelayedEnd(true));
         }
+        // 【Bug修复：判定是否超过最大回合限制（4回合未击杀则游戏结束）】
         else if (data.isMaxTurnsReached)
         {
             StartCoroutine(DelayedEnd(false));
