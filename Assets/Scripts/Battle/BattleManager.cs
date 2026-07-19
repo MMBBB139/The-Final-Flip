@@ -127,7 +127,7 @@ public class BattleManager : MonoBehaviour
         // UI生成
         GameObject cardObj = battleUI.CreateCardUI(drawn);
         LayoutRebuilder.ForceRebuildLayoutImmediate(battleUI.handArea.GetComponent<RectTransform>());
-        StartCoroutine(cardObj.GetComponent<CardUI>().AnimateDraw(battleUI.drawPileVisual.position));
+        StartCoroutine(cardObj.GetComponent<CardUI>().AnimateDraw(battleUI.drawPile.transform.position));
 
         battleUI.UpdateAllUI(data);
 

@@ -35,16 +35,24 @@ public class BattleUI : MonoBehaviour
 
     [Header("手牌区域")]
     public Transform handArea;
-    public RectTransform drawPileVisual;
+    public Button drawPile;
     public GameObject cardUIPrefab;
 
-    // ========== 新增：牌堆信息UI ==========
+    // ========== 牌堆信息UI ==========
     [Header("牌堆信息")]
-    public GameObject drawPileInfoPanel;           // 牌堆信息面板（常驻显示）
-    public TextMeshProUGUI totalRemainingText;      // 总剩余张数
-    public TextMeshProUGUI blueRemainingText;       // 蓝牌剩余
-    public TextMeshProUGUI yellowRemainingText;     // 黄牌剩余
-    public TextMeshProUGUI redRemainingText;        // 红牌剩余
+    public TextMeshProUGUI totalRemainingText;
+    public TextMeshProUGUI blueRemainingText;
+    public TextMeshProUGUI yellowRemainingText;
+    public TextMeshProUGUI redRemainingText;
+
+    // ========== 牌堆查看面板 ==========
+    [Header("牌堆查看面板")]
+    public GameObject drawPileDetailPanel;
+    public Transform drawPileDetailContent; // 挂有 GridLayoutGroup
+    public Button closeDrawPileDetailButton;
+
+    private List<RuntimeCard> currentDrawPile;
+    private List<GameObject> detailCardObjects = new List<GameObject>(); // 详情面板中的卡牌对象
 
     public event Action<CardColor> OnMainColorSelected;
 
@@ -53,6 +61,15 @@ public class BattleUI : MonoBehaviour
         blueButton.onClick.AddListener(() => SelectMainColor(CardColor.Blue));
         yellowButton.onClick.AddListener(() => SelectMainColor(CardColor.Yellow));
         redButton.onClick.AddListener(() => SelectMainColor(CardColor.Red));
+
+        if (drawPileDetailPanel != null)
+            drawPileDetailPanel.SetActive(false);
+
+        if (closeDrawPileDetailButton != null)
+            closeDrawPileDetailButton.onClick.AddListener(HideDrawPileDetailPanel);
+
+        // 牌堆点击打开详情面板
+        drawPile.onClick.AddListener(ShowDrawPileDetailPanel);
     }
 
     private void SelectMainColor(CardColor color)
@@ -78,9 +95,7 @@ public class BattleUI : MonoBehaviour
         yellowProbText.text = $"Rate: {probabilities[CardColor.Yellow]:P0}";
         redProbText.text = $"Rate: {probabilities[CardColor.Red]:P0}";
 
-        // 主色选择时隐藏牌堆信息（还没开始抽牌）
-        if (drawPileInfoPanel != null)
-            drawPileInfoPanel.SetActive(false);
+        HideDrawPileDetailPanel();
     }
 
     public void HideMainColorPanel()
@@ -97,15 +112,10 @@ public class BattleUI : MonoBehaviour
         turnText.text = $"Turn: {data.currentTurn}/{data.maxTurns}";
     }
 
-    // ========== 新增：更新牌堆剩余信息 ==========
     public void UpdateDrawPileInfo(List<RuntimeCard> drawPile)
     {
-        if (drawPileInfoPanel == null) return;
+        currentDrawPile = drawPile;
 
-        // 显示面板
-        drawPileInfoPanel.SetActive(true);
-
-        // 计算各颜色剩余数量
         int blueCount = 0, yellowCount = 0, redCount = 0;
         foreach (var card in drawPile)
         {
@@ -117,7 +127,6 @@ public class BattleUI : MonoBehaviour
             }
         }
 
-        // 更新文本
         if (totalRemainingText != null)
             totalRemainingText.text = $"{drawPile.Count}";
 
@@ -131,19 +140,77 @@ public class BattleUI : MonoBehaviour
             redRemainingText.text = $"<color=red>{redCount}</color>";
     }
 
-    // 隐藏牌堆信息（回合结束/爆牌时调用）
     public void HideDrawPileInfo()
     {
-        if (drawPileInfoPanel != null)
-            drawPileInfoPanel.SetActive(false);
+        HideDrawPileDetailPanel();
+    }
+
+    // ==================== 牌堆查看面板 ====================
+
+    public void ShowDrawPileDetailPanel()
+    {
+        if (drawPileDetailPanel == null || currentDrawPile == null || currentDrawPile.Count == 0)
+            return;
+
+        drawPileDetailPanel.SetActive(true);
+        RefreshDrawPileDetailContent();
+    }
+
+    public void HideDrawPileDetailPanel()
+    {
+        if (drawPileDetailPanel != null)
+            drawPileDetailPanel.SetActive(false);
+    }
+
+    private void RefreshDrawPileDetailContent()
+    {
+        if (drawPileDetailContent == null || cardUIPrefab == null || currentDrawPile == null)
+            return;
+
+        // 清空旧的卡牌对象
+        foreach (var obj in detailCardObjects)
+        {
+            Destroy(obj);
+        }
+        detailCardObjects.Clear();
+
+        // 排序：先按颜色分组（蓝→黄→红），同色内攻击力从低到高
+        List<RuntimeCard> sortedList = new List<RuntimeCard>(currentDrawPile);
+        sortedList.Sort((a, b) =>
+        {
+            int colorCompare = GetColorPriority(a.color).CompareTo(GetColorPriority(b.color));
+            if (colorCompare != 0) return colorCompare;
+            return a.GetAttackValue().CompareTo(b.GetAttackValue());
+        });
+
+        // 复用 cardUIPrefab 生成卡牌
+        foreach (var card in sortedList)
+        {
+            GameObject cardObj = Instantiate(cardUIPrefab, drawPileDetailContent);
+            CardUI cardUI = cardObj.GetComponent<CardUI>();
+            if (cardUI != null)
+            {
+                cardUI.Init(card);
+            }
+            detailCardObjects.Add(cardObj);
+        }
+    }
+
+    private int GetColorPriority(CardColor color)
+    {
+        return color switch
+        {
+            CardColor.Blue => 0,
+            CardColor.Yellow => 1,
+            CardColor.Red => 2,
+            _ => 3
+        };
     }
 
     public void ShowGameOver(bool isWin)
     {
         gameOverPanel.SetActive(true);
         gameOverTitle.text = isWin ? "<color=green>Victory!</color>" : "<color=red>Defeat!</color>";
-
-        // 游戏结束隐藏牌堆信息
         HideDrawPileInfo();
     }
 
