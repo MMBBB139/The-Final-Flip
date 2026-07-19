@@ -1,10 +1,8 @@
-// BattleRules.cs
 using System.Collections.Generic;
 using UnityEngine;
 
 public static class BattleRules
 {
-    // 爆牌概率表
     private static readonly Dictionary<int, float> ExplosionRisk = new()
     {
         {5, 0.05f}, {6, 0.15f}, {7, 0.30f}
@@ -25,17 +23,15 @@ public static class BattleRules
         switch (card.color)
         {
             case CardColor.Blue:
-                if (data.playerHp >= data.maxPlayerHp)
-                {
-                    // 满血时获得护盾（护盾系统待实现）
-                }
-                data.playerHp += 1;
+                // 回复1血，满血时自动转护盾
+                data.Heal(1);
                 break;
             case CardColor.Yellow:
                 // 连击倍率+0.1（连击系统待实现）
                 break;
             case CardColor.Red:
-                data.playerHp -= 1;
+                // 扣1血，优先消耗护盾
+                data.TakeDamage(1);
                 data.curseCount++;
                 break;
         }
@@ -47,7 +43,6 @@ public static class BattleRules
     public static void TriggerCursePenalty(BattleData data)
     {
         data.curseCount = 0;
-        // 简单诅咒惩罚：随机替换一张蓝牌为黄牌
         var blueCards = data.levelDeck.FindAll(c => c.color == CardColor.Blue);
         if (blueCards.Count > 0)
         {
@@ -56,14 +51,12 @@ public static class BattleRules
         }
     }
 
-    // 生成带主色权重的牌堆
     public static List<RuntimeCard> GenerateWeightedDrawPile(List<RuntimeCard> deck, CardColor? mainColor)
     {
         List<RuntimeCard> pile = new List<RuntimeCard>(deck);
 
         if (mainColor.HasValue)
         {
-            // 主色牌出现概率翻倍：复制一份主色牌加入牌堆
             List<RuntimeCard> mainColorCards = pile.FindAll(c => c.color == mainColor.Value);
             pile.AddRange(mainColorCards);
         }
@@ -72,7 +65,6 @@ public static class BattleRules
         return pile;
     }
 
-    // 确保第一张牌是主色
     public static void EnsureFirstCardIsMainColor(List<RuntimeCard> drawPile, CardColor? mainColor)
     {
         if (!mainColor.HasValue || drawPile.Count == 0) return;
@@ -80,23 +72,18 @@ public static class BattleRules
         int mainColorIndex = drawPile.FindIndex(c => c.color == mainColor.Value);
         if (mainColorIndex > 0)
         {
-            // 将第一张主色牌移到最前面
             var mainCard = drawPile[mainColorIndex];
             drawPile.RemoveAt(mainColorIndex);
             drawPile.Insert(0, mainCard);
         }
         else if (mainColorIndex == -1)
         {
-            // 如果没有主色牌，按优先级替换
-            CardColor fallback = GetFallbackColor(deck: null); // 简化处理
-            // 将第一张牌改为fallback颜色（实际项目中应该更优雅地处理）
             drawPile[0].color = mainColor.Value;
         }
     }
 
     private static CardColor GetFallbackColor(List<RuntimeCard> deck)
     {
-        // 优先级：蓝 > 黄 > 红
         return CardColor.Blue;
     }
 

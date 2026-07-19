@@ -30,20 +30,16 @@ public class BattleManager : MonoBehaviour
         data = new BattleData();
         data.levelDeck = deckManager.GenerateInitialDeck(12);
 
-        // 初始隐藏牌堆信息（等选完主色才显示）
         battleUI.HideDrawPileInfo();
 
-        // 第一回合开始，先选主色
         StartMainColorSelection();
     }
 
-    // ==================== 主色选择 ====================
     private void StartMainColorSelection()
     {
         drawButton.interactable = false;
         stopButton.interactable = false;
 
-        // 第1层Boss固定黄牌弱点
         data.bossWeaknessColor = CardColor.Yellow;
 
         var probabilities = new Dictionary<CardColor, float>
@@ -61,7 +57,6 @@ public class BattleManager : MonoBehaviour
         data.selectedMainColor = color;
         data.firstCardGuaranteed = true;
 
-        // 红主色：诅咒+2
         if (color == CardColor.Red)
         {
             data.curseCount += 2;
@@ -72,10 +67,11 @@ public class BattleManager : MonoBehaviour
         StartNewTurn();
     }
 
-    // ==================== 回合流程 ====================
     private void StartNewTurn()
     {
-        // 每回合重新生成带权重的抽牌堆
+        // 每回合开始护盾衰减2点
+        data.DecayShield(2);
+
         data.drawPile = BattleRules.GenerateWeightedDrawPile(data.levelDeck, data.selectedMainColor);
         BattleRules.EnsureFirstCardIsMainColor(data.drawPile, data.selectedMainColor);
 
@@ -88,11 +84,9 @@ public class BattleManager : MonoBehaviour
         stopButton.interactable = true;
         battleUI.UpdateAllUI(data);
 
-        // 回合开始时显示牌堆信息
         battleUI.UpdateDrawPileInfo(data.drawPile);
     }
 
-    // ==================== 抽牌 ====================
     private void OnDrawClicked()
     {
         if (isBusted || data.handCards.Count >= data.maxHandSize || data.drawPile.Count == 0)
@@ -103,32 +97,24 @@ public class BattleManager : MonoBehaviour
         data.handCards.Add(drawn);
         data.firstCardGuaranteed = false;
 
-        // 抽牌后实时更新牌堆信息
         battleUI.UpdateDrawPileInfo(data.drawPile);
 
-        // 爆牌判定
         if (BattleRules.CheckExplosion(data.handCards.Count, data.GetSafeZoneSize()))
         {
             HandleExplosion();
             return;
         }
 
-        // 计算单张牌的攻击力
         int mainColorBonus = data.GetMainColorBonus(drawn.color);
         int cardAttack = drawn.GetAttackValue() + mainColorBonus;
 
-        // 【Bug修复：移除抽牌时的1.5倍计算，将其移至OnStopClicked结算阶段】
-
         data.currentAttack += cardAttack;
 
-        // 颜色效果
         BattleRules.ApplyCardColorEffect(drawn, data);
 
-        // 诅咒判定
         if (data.isCurseReady)
             BattleRules.TriggerCursePenalty(data);
 
-        // UI生成
         GameObject cardObj = battleUI.CreateCardUI(drawn);
         LayoutRebuilder.ForceRebuildLayoutImmediate(battleUI.handArea.GetComponent<RectTransform>());
         StartCoroutine(cardObj.GetComponent<CardUI>().AnimateDraw(battleUI.drawPile.transform.position));
@@ -145,11 +131,12 @@ public class BattleManager : MonoBehaviour
         drawButton.interactable = false;
         battleUI.UpdateAllUI(data);
 
-        // 爆牌时隐藏牌堆信息
         battleUI.HideDrawPileInfo();
 
         StartCoroutine(battleUI.ShowExplosionFeedback());
-        data.playerHp -= 2;
+
+        // 爆牌扣2血，优先消耗护盾
+        data.TakeDamage(2);
         data.currentAttack = 0;
 
         if (data.isPlayerDead)
@@ -161,19 +148,15 @@ public class BattleManager : MonoBehaviour
         OnStopClicked();
     }
 
-    // ==================== 停手 ====================
     private void OnStopClicked()
     {
         drawButton.interactable = false;
         stopButton.interactable = false;
 
-        // 停手时隐藏牌堆信息
         battleUI.HideDrawPileInfo();
 
-        // 【Bug修复：在这里进行伤害结算时，乘以Boss弱点倍率】
         int finalDamage = data.currentAttack;
 
-        // 如果没有爆牌，则计算所有打出弱点颜色牌的加成（符合“最后结算”规则）
         if (!isBusted)
         {
             float weaknessMultiplier = 1.5f;
@@ -184,12 +167,11 @@ public class BattleManager : MonoBehaviour
                 if (card.color == data.bossWeaknessColor)
                 {
                     int cardAtk = card.GetAttackValue() + data.GetMainColorBonus(card.color);
-                    // 累加额外的那0.5倍伤害
                     weaknessBonusDamage += Mathf.RoundToInt(cardAtk * (weaknessMultiplier - 1f));
                 }
             }
             finalDamage += weaknessBonusDamage;
-            data.currentAttack = finalDamage; // 更新面板，让玩家看得到加成后的最终攻击力
+            data.currentAttack = finalDamage;
         }
 
         data.bossHp -= finalDamage;
@@ -200,29 +182,25 @@ public class BattleManager : MonoBehaviour
         {
             StartCoroutine(DelayedEnd(true));
         }
-        // 【Bug修复：判定是否超过最大回合限制（4回合未击杀则游戏结束）】
         else if (data.isMaxTurnsReached)
         {
             StartCoroutine(DelayedEnd(false));
         }
         else
         {
-            // Boss攻击玩家
             StartCoroutine(BossAttackPhase());
         }
     }
 
-    // ==================== Boss攻击阶段 ====================
     private IEnumerator BossAttackPhase()
     {
         yield return new WaitForSeconds(0.5f);
 
-        data.playerHp -= data.BossDamage;
+        // Boss攻击，优先消耗护盾
+        data.TakeDamage(data.BossDamage);
 
-        // 更新UI，playerHp的text会立即变化
         battleUI.UpdateAllUI(data);
 
-        // 检查玩家是否死亡
         if (data.isPlayerDead)
         {
             StartCoroutine(DelayedEnd(false));
@@ -232,7 +210,6 @@ public class BattleManager : MonoBehaviour
         yield return new WaitForSeconds(1f);
 
         data.currentTurn++;
-        // 每回合重新选主色
         StartMainColorSelection();
     }
 

@@ -26,6 +26,14 @@ public class BattleData
         set => _playerHp = Mathf.Clamp(value, 0, maxPlayerHp);
     }
 
+    private int _shield;
+    public int shield
+    {
+        get => _shield;
+        set => _shield = Mathf.Clamp(value, 0, maxShield);
+    }
+    public int maxShield = 10;
+
     private int _curseCount;
     public int curseCount
     {
@@ -61,7 +69,49 @@ public class BattleData
 
     public bool isCurseReady => curseCount >= curseThreshold;
 
-    // 获取主色攻击力加成
+    /// <summary>
+    /// 受到伤害，优先消耗护盾
+    /// </summary>
+    public void TakeDamage(int damage)
+    {
+        if (damage <= 0) return;
+
+        int shieldDamage = Mathf.Min(damage, shield);
+        shield -= shieldDamage;
+        int remainingDamage = damage - shieldDamage;
+
+        if (remainingDamage > 0)
+        {
+            playerHp -= remainingDamage;
+        }
+    }
+
+    /// <summary>
+    /// 治疗生命值，满血时转为护盾
+    /// </summary>
+    public void Heal(int amount)
+    {
+        if (amount <= 0) return;
+
+        int hpMissing = maxPlayerHp - playerHp;
+        int hpHeal = Mathf.Min(amount, hpMissing);
+        playerHp += hpHeal;
+
+        int remainingHeal = amount - hpHeal;
+        if (remainingHeal > 0)
+        {
+            shield += remainingHeal;
+        }
+    }
+
+    /// <summary>
+    /// 护盾衰减（每回合开始时调用）
+    /// </summary>
+    public void DecayShield(int amount = 2)
+    {
+        shield = Mathf.Max(0, shield - amount);
+    }
+
     public int GetMainColorBonus(CardColor color)
     {
         if (selectedMainColor == null || color != selectedMainColor.Value)
@@ -76,10 +126,8 @@ public class BattleData
         };
     }
 
-    // 获取爆牌安全区大小
     public int GetSafeZoneSize()
     {
-        // 蓝主色安全区扩展至前6张
         if (selectedMainColor == CardColor.Blue)
             return 6;
         return 4;

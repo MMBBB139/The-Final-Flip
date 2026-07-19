@@ -10,6 +10,7 @@ public class BattleUI : MonoBehaviour
     [Header("数值面板")]
     public TextMeshProUGUI attackText;
     public TextMeshProUGUI playerHpText;
+    public TextMeshProUGUI shieldText;
     public TextMeshProUGUI curseText;
     public TextMeshProUGUI bossHpText;
     public TextMeshProUGUI turnText;
@@ -38,14 +39,12 @@ public class BattleUI : MonoBehaviour
     public Button drawPile;
     public GameObject cardUIPrefab;
 
-    // ========== 牌堆信息UI ==========
     [Header("牌堆信息")]
     public TextMeshProUGUI totalRemainingText;
     public TextMeshProUGUI blueRemainingText;
     public TextMeshProUGUI yellowRemainingText;
     public TextMeshProUGUI redRemainingText;
 
-    // ========== 牌堆查看面板 ==========
     [Header("牌堆查看面板")]
     public GameObject drawPileDetailPanel;
     public Transform drawPileDetailContent;
@@ -68,7 +67,6 @@ public class BattleUI : MonoBehaviour
         if (closeDrawPileDetailButton != null)
             closeDrawPileDetailButton.onClick.AddListener(HideDrawPileDetailPanel);
 
-        // 牌堆点击打开详情面板
         drawPile.onClick.AddListener(ShowDrawPileDetailPanel);
     }
 
@@ -107,6 +105,22 @@ public class BattleUI : MonoBehaviour
     {
         attackText.text = $"Damage: \n{data.currentAttack}";
         playerHpText.text = $"HP: {data.playerHp}/{data.maxPlayerHp}";
+
+        // 护盾显示
+        if (shieldText != null)
+        {
+            if (data.shield > 0)
+            {
+                shieldText.text = $"<color=#00BFFF>Shield: {data.shield}/{data.maxShield}</color>";
+                shieldText.gameObject.SetActive(true);
+            }
+            else
+            {
+                shieldText.text = "";
+                shieldText.gameObject.SetActive(false);
+            }
+        }
+
         curseText.text = $"Curse: {data.curseCount}/{data.curseThreshold}";
         bossHpText.text = $"Boss: {data.bossHp}/{data.maxBossHp}";
         turnText.text = $"Turn: {data.currentTurn}/{data.maxTurns}";
@@ -145,8 +159,6 @@ public class BattleUI : MonoBehaviour
         HideDrawPileDetailPanel();
     }
 
-    // ==================== 牌堆查看面板 ====================
-
     public void ShowDrawPileDetailPanel()
     {
         if (drawPileDetailPanel == null || currentDrawPile == null || currentDrawPile.Count == 0)
@@ -167,14 +179,12 @@ public class BattleUI : MonoBehaviour
         if (drawPileDetailContent == null || cardUIPrefab == null || currentDrawPile == null)
             return;
 
-        // 清空旧的卡牌对象
         foreach (var obj in detailCardObjects)
         {
             Destroy(obj);
         }
         detailCardObjects.Clear();
 
-        // 排序：先按颜色分组（蓝→黄→红），同色内攻击力从低到高
         List<RuntimeCard> sortedList = new List<RuntimeCard>(currentDrawPile);
         sortedList.Sort((a, b) =>
         {
@@ -183,7 +193,6 @@ public class BattleUI : MonoBehaviour
             return a.GetAttackValue().CompareTo(b.GetAttackValue());
         });
 
-        // 复用 cardUIPrefab 生成卡牌
         foreach (var card in sortedList)
         {
             GameObject cardObj = Instantiate(cardUIPrefab, drawPileDetailContent);
