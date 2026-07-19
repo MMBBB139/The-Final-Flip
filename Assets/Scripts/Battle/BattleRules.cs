@@ -30,8 +30,8 @@ public static class BattleRules
                 // 连击倍率+0.1（连击系统待实现）
                 break;
             case CardColor.Red:
-                // 扣1血，优先消耗护盾
-                data.TakeDamage(1);
+                // 扣2血，优先消耗护盾
+                data.TakeDamage(2);
                 data.curseCount++;
                 break;
         }

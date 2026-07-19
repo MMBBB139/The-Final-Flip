@@ -108,6 +108,12 @@ public class BattleManager : MonoBehaviour
         int mainColorBonus = data.GetMainColorBonus(drawn.color);
         int cardAttack = drawn.GetAttackValue() + mainColorBonus;
 
+        // 弱点倍率提前计算，让玩家实时看到增益后的伤害
+        if (drawn.color == data.bossWeaknessColor)
+        {
+            cardAttack = Mathf.RoundToInt(cardAttack * 1.5f);
+        }
+
         data.currentAttack += cardAttack;
 
         BattleRules.ApplyCardColorEffect(drawn, data);
@@ -155,24 +161,8 @@ public class BattleManager : MonoBehaviour
 
         battleUI.HideDrawPileInfo();
 
+        // 弱点倍率已在抽牌时计算，这里直接使用currentAttack
         int finalDamage = data.currentAttack;
-
-        if (!isBusted)
-        {
-            float weaknessMultiplier = 1.5f;
-            int weaknessBonusDamage = 0;
-
-            foreach (var card in data.handCards)
-            {
-                if (card.color == data.bossWeaknessColor)
-                {
-                    int cardAtk = card.GetAttackValue() + data.GetMainColorBonus(card.color);
-                    weaknessBonusDamage += Mathf.RoundToInt(cardAtk * (weaknessMultiplier - 1f));
-                }
-            }
-            finalDamage += weaknessBonusDamage;
-            data.currentAttack = finalDamage;
-        }
 
         data.bossHp -= finalDamage;
 

@@ -41,7 +41,7 @@ public class BattleData
         set => _curseCount = Mathf.Clamp(value, 0, curseThreshold);
     }
 
-    private int _bossHp = 60;
+    private int _bossHp = 100;
     public int bossHp
     {
         get => _bossHp;
@@ -59,7 +59,7 @@ public class BattleData
     public int maxPlayerHp = 20;
     public int maxHandSize = 7;
     public int curseThreshold = 3;
-    public int maxBossHp = 60;
+    public int maxBossHp = 100;
     public int BossDamage = 5;
 
     public bool isPlayerDead => playerHp <= 0;
