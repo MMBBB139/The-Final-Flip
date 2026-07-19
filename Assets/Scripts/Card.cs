@@ -37,13 +37,6 @@ public class RuntimeCard
     // 计算这张牌的实际攻击力
     public int GetAttackValue()
     {
-        int baseAtk = 0;
-        switch (color)
-        {
-            case CardColor.Blue: baseAtk = 0; break;
-            case CardColor.Yellow: baseAtk = 5; break;
-            case CardColor.Red: baseAtk = 10; break;
-        }
-        return rank + baseAtk + bonusDamage;
+        return rank + bonusDamage;
     }
 }

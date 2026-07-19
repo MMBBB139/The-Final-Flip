@@ -27,17 +27,16 @@ public static class BattleRules
             case CardColor.Blue:
                 if (data.playerHp >= data.maxPlayerHp)
                 {
-                    // 满血转护盾逻辑（先简单+2血，后续可扩展护盾系统）
+                    // 满血时获得护盾（护盾系统待实现）
                 }
-                data.playerHp += 2;
+                data.playerHp += 1;
                 break;
             case CardColor.Yellow:
-                data.currentAttack += 5;
+                // 连击倍率+0.1（连击系统待实现）
                 break;
             case CardColor.Red:
-                data.playerHp -= 2;
+                data.playerHp -= 1;
                 data.curseCount++;
-                data.currentAttack += 10;
                 break;
         }
     }

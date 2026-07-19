@@ -217,9 +217,7 @@ public class BattleManager : MonoBehaviour
     {
         yield return new WaitForSeconds(0.5f);
 
-        // 第一层Boss攻击力为2
-        int bossAttack = 2;
-        data.playerHp -= bossAttack;
+        data.playerHp -= data.BossDamage;
 
         // 更新UI，playerHp的text会立即变化
         battleUI.UpdateAllUI(data);

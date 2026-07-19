@@ -6,9 +6,9 @@ public class DeckManager : MonoBehaviour
     // 三色牌的数值范围定义
     private static readonly Dictionary<CardColor, (int min, int max)> ColorRanges = new()
     {
-        { CardColor.Blue, (5, 14) },
-        { CardColor.Yellow, (6, 19) },
-        { CardColor.Red, (11, 24) }
+        { CardColor.Blue, (1, 2) },
+        { CardColor.Yellow, (3, 4) },
+        { CardColor.Red, (5, 6) }
     };
 
     // 初始牌组颜色比例

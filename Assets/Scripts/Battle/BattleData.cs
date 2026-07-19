@@ -33,7 +33,7 @@ public class BattleData
         set => _curseCount = Mathf.Clamp(value, 0, curseThreshold);
     }
 
-    private int _bossHp = 280;
+    private int _bossHp = 60;
     public int bossHp
     {
         get => _bossHp;
@@ -51,12 +51,12 @@ public class BattleData
     public int maxPlayerHp = 20;
     public int maxHandSize = 7;
     public int curseThreshold = 3;
-    public int maxBossHp = 280;
+    public int maxBossHp = 60;
+    public int BossDamage = 5;
 
     public bool isPlayerDead => playerHp <= 0;
     public bool isBossDead => bossHp <= 0;
 
-    // 【Bug修复：这里由 > 改为 >=】4回合为限制，如果第4回合结束（停手）仍未胜利，立即满足最大回合条件，游戏结束
     public bool isMaxTurnsReached => currentTurn >= maxTurns;
 
     public bool isCurseReady => curseCount >= curseThreshold;
@@ -69,9 +69,9 @@ public class BattleData
 
         return selectedMainColor.Value switch
         {
-            CardColor.Blue => 5,
-            CardColor.Yellow => 10,
-            CardColor.Red => 15,
+            CardColor.Blue => 1,
+            CardColor.Yellow => 2,
+            CardColor.Red => 3,
             _ => 0
         };
     }
