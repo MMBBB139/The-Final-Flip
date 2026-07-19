@@ -88,7 +88,7 @@ public class BattleManager : MonoBehaviour
         stopButton.interactable = true;
         battleUI.UpdateAllUI(data);
 
-        // ========== 新增：回合开始时显示牌堆信息 ==========
+        // 回合开始时显示牌堆信息
         battleUI.UpdateDrawPileInfo(data.drawPile);
     }
 
@@ -103,7 +103,7 @@ public class BattleManager : MonoBehaviour
         data.handCards.Add(drawn);
         data.firstCardGuaranteed = false;
 
-        // ========== 新增：抽牌后实时更新牌堆信息 ==========
+        // 抽牌后实时更新牌堆信息
         battleUI.UpdateDrawPileInfo(data.drawPile);
 
         // 爆牌判定
@@ -141,7 +141,7 @@ public class BattleManager : MonoBehaviour
         drawButton.interactable = false;
         battleUI.UpdateAllUI(data);
 
-        // ========== 新增：爆牌时隐藏牌堆信息 ==========
+        // 爆牌时隐藏牌堆信息
         battleUI.HideDrawPileInfo();
 
         StartCoroutine(battleUI.ShowExplosionFeedback());
@@ -163,9 +163,10 @@ public class BattleManager : MonoBehaviour
         drawButton.interactable = false;
         stopButton.interactable = false;
 
-        // ========== 新增：停手时隐藏牌堆信息 ==========
+        // 停手时隐藏牌堆信息
         battleUI.HideDrawPileInfo();
 
+        // 玩家攻击Boss
         float weaknessMultiplier = 1.5f;
         int finalDamage = Mathf.RoundToInt(data.currentAttack * weaknessMultiplier);
         data.bossHp -= finalDamage;
@@ -182,14 +183,33 @@ public class BattleManager : MonoBehaviour
         }
         else
         {
-            data.currentTurn++;
-            StartCoroutine(DelayNextTurn());
+            // Boss攻击玩家
+            StartCoroutine(BossAttackPhase());
         }
     }
 
-    private IEnumerator DelayNextTurn()
+    // ==================== Boss攻击阶段 ====================
+    private IEnumerator BossAttackPhase()
     {
+        yield return new WaitForSeconds(0.5f);
+
+        // 第一层Boss攻击力为2
+        int bossAttack = 2;
+        data.playerHp -= bossAttack;
+
+        // 更新UI，playerHp的text会立即变化
+        battleUI.UpdateAllUI(data);
+
+        // 检查玩家是否死亡
+        if (data.isPlayerDead)
+        {
+            StartCoroutine(DelayedEnd(false));
+            yield break;
+        }
+
         yield return new WaitForSeconds(1f);
+
+        data.currentTurn++;
         // 每回合重新选主色
         StartMainColorSelection();
     }

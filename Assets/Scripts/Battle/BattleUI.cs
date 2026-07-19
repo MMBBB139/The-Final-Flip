@@ -48,11 +48,11 @@ public class BattleUI : MonoBehaviour
     // ========== 牌堆查看面板 ==========
     [Header("牌堆查看面板")]
     public GameObject drawPileDetailPanel;
-    public Transform drawPileDetailContent; // 挂有 GridLayoutGroup
+    public Transform drawPileDetailContent;
     public Button closeDrawPileDetailButton;
 
     private List<RuntimeCard> currentDrawPile;
-    private List<GameObject> detailCardObjects = new List<GameObject>(); // 详情面板中的卡牌对象
+    private List<GameObject> detailCardObjects = new List<GameObject>();
 
     public event Action<CardColor> OnMainColorSelected;
 
