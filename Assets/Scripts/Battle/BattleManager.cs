@@ -16,22 +16,30 @@ public class BattleManager : MonoBehaviour
 
     private BattleData data;
     private bool isBusted;
+    private RuntimeCard pendingCard;
+    private ComboManager comboManager;
+    private CardEffectExecutor cardExecutor;
 
     void Start()
     {
+        data = new BattleData();
+
+        comboManager = new ComboManager(data);
+        cardExecutor = new CardEffectExecutor(data, comboManager);
+
         drawButton.onClick.AddListener(OnDrawClicked);
         stopButton.onClick.AddListener(OnStopClicked);
         battleUI.restartButton.onClick.AddListener(RestartGame);
         battleUI.OnMainColorSelected += OnMainColorSelectedHandler;
+        if (battleUI.takeButton != null) battleUI.takeButton.onClick.AddListener(OnTakePendingCard);
+        if (battleUI.skipButton != null) battleUI.skipButton.onClick.AddListener(OnSkipPendingCard);
 
-        battleUI.explosionCanvasGroup.alpha = 0;
-        battleUI.gameOverPanel.SetActive(false);
+        GameEvents.OnFloatingText += msg => battleUI.ShowFloatingText(msg);
 
-        data = new BattleData();
         data.levelDeck = deckManager.GenerateInitialDeck(12);
+        data.maxPolicy = data.levelDeck.Count;
 
         battleUI.HideDrawPileInfo();
-
         StartMainColorSelection();
     }
 
@@ -39,16 +47,28 @@ public class BattleManager : MonoBehaviour
     {
         drawButton.interactable = false;
         stopButton.interactable = false;
-
         data.bossWeaknessColor = CardColor.Yellow;
 
+        int blueCount = 0, yellowCount = 0, redCount = 0;
+        foreach (var card in data.levelDeck)
+        {
+            switch (card.color)
+            {
+                case CardColor.Blue: blueCount++; break;
+                case CardColor.Yellow: yellowCount++; break;
+                case CardColor.Red: redCount++; break;
+            }
+        }
+
+        int total = data.levelDeck.Count;
         var probabilities = new Dictionary<CardColor, float>
         {
-            { CardColor.Blue, 0.50f },
-            { CardColor.Yellow, 0.33f },
-            { CardColor.Red, 0.17f }
+            { CardColor.Blue, total > 0 ? (float)blueCount / total : 0f },
+            { CardColor.Yellow, total > 0 ? (float)yellowCount / total : 0f },
+            { CardColor.Red, total > 0 ? (float)redCount / total : 0f }
         };
 
+        GameEvents.RaiseMainColorSelectionStarted();
         battleUI.ShowMainColorPanel(data.bossWeaknessColor, probabilities);
     }
 
@@ -57,21 +77,16 @@ public class BattleManager : MonoBehaviour
         data.selectedMainColor = color;
         data.firstCardGuaranteed = true;
 
-        if (color == CardColor.Red)
-        {
-            data.curseCount += 2;
-            if (data.isCurseReady)
-                BattleRules.TriggerCursePenalty(data);
-        }
+        if (color == CardColor.Blue)
+            data.policy = Mathf.Min(data.policy + 2, data.maxPolicy);
 
+        GameEvents.RaiseMainColorSelected(color);
         StartNewTurn();
     }
 
     private void StartNewTurn()
     {
-        // 每回合开始护盾衰减2点
-        data.DecayShield(2);
-
+        data.ResetTurnData();
         data.drawPile = BattleRules.GenerateWeightedDrawPile(data.levelDeck, data.selectedMainColor);
         BattleRules.EnsureFirstCardIsMainColor(data.drawPile, data.selectedMainColor);
 
@@ -79,71 +94,122 @@ public class BattleManager : MonoBehaviour
         data.handCards.Clear();
         data.currentAttack = 0;
         isBusted = false;
+        pendingCard = null;
 
         drawButton.interactable = true;
         stopButton.interactable = true;
-        battleUI.UpdateAllUI(data);
 
-        battleUI.UpdateDrawPileInfo(data.drawPile);
+        RefreshUI();
+        GameEvents.RaiseTurnStarted();
     }
 
     private void OnDrawClicked()
     {
-        if (isBusted || data.handCards.Count >= data.maxHandSize || data.drawPile.Count == 0)
-            return;
+        if (isBusted || data.handCards.Count >= data.maxHandSize ||
+            data.drawPile.Count == 0 || pendingCard != null) return;
 
-        RuntimeCard drawn = data.drawPile[0];
+        pendingCard = data.drawPile[0];
         data.drawPile.RemoveAt(0);
+
+        float bustRate = BattleRules.GetNextBustRate(data);
+        if (Random.value < bustRate)
+        {
+            if (data.policy > 0)
+            {
+                data.policy--;
+                GameEvents.RaiseFloatingText("Policy active! Bust prevented!");
+            }
+            else
+            {
+                HandleExplosion();
+                return;
+            }
+        }
+
+        // 进入挂起状态
+        drawButton.interactable = false;
+        stopButton.interactable = false;
+        GameEvents.RaiseCardDrawn(pendingCard);
+        battleUI.ShowPendingCard(pendingCard);
+
+        if (data.policy > 0 && !data.hasUsedSkipThisTurn && battleUI.pendingActionsPanel != null)
+            battleUI.SetPendingState(true);
+        else
+            OnTakePendingCard();
+    }
+
+    private void OnSkipPendingCard()
+    {
+        if (pendingCard == null || data.policy <= 0 || data.hasUsedSkipThisTurn) return;
+
+        data.policy--;
+        data.hasUsedSkipThisTurn = true;
+        data.drawPile.Add(pendingCard);
+
+        var skippedCard = pendingCard;
+        pendingCard = null;
+        GameEvents.RaiseCardSkipped(skippedCard);
+
+        battleUI.SetPendingState(false);
+        battleUI.HidePendingCard();
+
+        drawButton.interactable = true;
+        stopButton.interactable = true;
+        RefreshUI();
+    }
+
+    private void OnTakePendingCard()
+    {
+        if (pendingCard == null) return;
+
+        RuntimeCard drawn = pendingCard;
+        pendingCard = null;
+        battleUI.SetPendingState(false);
+        battleUI.HidePendingCard();
+
         data.handCards.Add(drawn);
         data.firstCardGuaranteed = false;
 
-        battleUI.UpdateDrawPileInfo(data.drawPile);
+        // 委托给CardPlayResolver结算
+        cardExecutor.ExecuteTakeCard(drawn);
+        GameEvents.RaiseCardTaken(drawn);
 
-        if (BattleRules.CheckExplosion(data.handCards.Count, data.GetSafeZoneSize()))
+        // 检查玩家死亡
+        if (data.isPlayerDead)
         {
-            HandleExplosion();
+            StartCoroutine(DelayedEnd(false));
             return;
         }
 
-        int mainColorBonus = data.GetMainColorBonus(drawn.color);
-        int cardAttack = drawn.GetAttackValue() + mainColorBonus;
-
-        // 弱点倍率提前计算，让玩家实时看到增益后的伤害
-        if (drawn.color == data.bossWeaknessColor)
-        {
-            cardAttack = Mathf.RoundToInt(cardAttack * 1.5f);
-        }
-
-        data.currentAttack += cardAttack;
-
-        BattleRules.ApplyCardColorEffect(drawn, data);
-
-        if (data.isCurseReady)
-            BattleRules.TriggerCursePenalty(data);
-
+        // 创建卡牌UI并播放动画
         GameObject cardObj = battleUI.CreateCardUI(drawn);
-        LayoutRebuilder.ForceRebuildLayoutImmediate(battleUI.handArea.GetComponent<RectTransform>());
-        StartCoroutine(cardObj.GetComponent<CardUI>().AnimateDraw(battleUI.drawPile.transform.position));
+        if (battleUI.handArea != null)
+            UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(battleUI.handArea as RectTransform);
 
-        battleUI.UpdateAllUI(data);
+        Vector3 spawnPos = battleUI.drawPile.transform.position;
+        StartCoroutine(cardObj.GetComponent<CardUI>().AnimateDraw(spawnPos));
 
-        if (data.isPlayerDead)
-            StartCoroutine(DelayedEnd(false));
+        RefreshUI();
+        drawButton.interactable = true;
+        stopButton.interactable = true;
     }
 
     private void HandleExplosion()
     {
         isBusted = true;
+        battleUI.SetPendingState(false);
+        battleUI.HidePendingCard();
         drawButton.interactable = false;
-        battleUI.UpdateAllUI(data);
+        stopButton.interactable = false;
 
-        battleUI.HideDrawPileInfo();
-
-        StartCoroutine(battleUI.ShowExplosionFeedback());
-
-        // 爆牌扣2血，优先消耗护盾
-        data.TakeDamage(2);
+        int bustDmg = Mathf.FloorToInt((data.handCards.Count + 1) / 2f);
+        data.TakeDamage(bustDmg);
         data.currentAttack = 0;
+
+        GameEvents.RaiseBusted();
+        RefreshUI();
+        battleUI.HideDrawPileInfo();
+        StartCoroutine(battleUI.ShowExplosionFeedback());
 
         if (data.isPlayerDead)
         {
@@ -151,45 +217,56 @@ public class BattleManager : MonoBehaviour
             return;
         }
 
-        OnStopClicked();
+        StartCoroutine(ExecuteBustEndTurn());
+    }
+
+    private IEnumerator ExecuteBustEndTurn()
+    {
+        yield return new WaitForSeconds(1.5f);
+        StartCoroutine(BossAttackPhase());
     }
 
     private void OnStopClicked()
     {
         drawButton.interactable = false;
         stopButton.interactable = false;
-
         battleUI.HideDrawPileInfo();
 
-        // 弱点倍率已在抽牌时计算，这里直接使用currentAttack
-        int finalDamage = data.currentAttack;
+        float finalMult = BattleRules.GetBaseComboMultiplier(data.comboCount) + data.bonusYellowMult;
+        int extraDmg = comboManager.CalculateExtraDamage();
 
+        float totalBase = (data.currentAttack * finalMult) + extraDmg;
+        float weakMult = (data.selectedMainColor == data.bossWeaknessColor) ? 1.5f : 1.0f;
+        int finalDamage = Mathf.CeilToInt(totalBase * weakMult);
+
+        int healAmt = data.policy / 2;
+        if (healAmt > 0)
+        {
+            data.Heal(healAmt);
+            GameEvents.RaiseFloatingText($"Rest Heal: +{healAmt}");
+        }
+
+        battleUI.ShowCalcFormula(data.currentAttack, finalMult, extraDmg, weakMult, finalDamage);
         data.bossHp -= finalDamage;
+        RefreshUI();
 
-        battleUI.UpdateAllUI(data);
+        GameEvents.RaiseTurnEnded();
 
         if (data.isBossDead)
-        {
             StartCoroutine(DelayedEnd(true));
-        }
         else if (data.isMaxTurnsReached)
-        {
             StartCoroutine(DelayedEnd(false));
-        }
         else
-        {
             StartCoroutine(BossAttackPhase());
-        }
     }
 
     private IEnumerator BossAttackPhase()
     {
-        yield return new WaitForSeconds(0.5f);
+        yield return new WaitForSeconds(1.5f);
+        battleUI.HideCalcFormula();
 
-        // Boss攻击，优先消耗护盾
         data.TakeDamage(data.BossDamage);
-
-        battleUI.UpdateAllUI(data);
+        RefreshUI();
 
         if (data.isPlayerDead)
         {
@@ -198,7 +275,6 @@ public class BattleManager : MonoBehaviour
         }
 
         yield return new WaitForSeconds(1f);
-
         data.currentTurn++;
         StartMainColorSelection();
     }
@@ -208,11 +284,23 @@ public class BattleManager : MonoBehaviour
         yield return new WaitForSeconds(1.2f);
         drawButton.interactable = false;
         stopButton.interactable = false;
+        GameEvents.RaiseGameEnded(isWin);
         battleUI.ShowGameOver(isWin);
     }
 
     private void RestartGame()
     {
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+    }
+
+    private void RefreshUI()
+    {
+        battleUI.UpdateAllUI(data);
+        battleUI.UpdateDrawPileInfo(data.drawPile);
+    }
+
+    private void OnDestroy()
+    {
+        GameEvents.OnFloatingText -= msg => battleUI.ShowFloatingText(msg);
     }
 }

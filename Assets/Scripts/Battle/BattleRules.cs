@@ -3,64 +3,47 @@ using UnityEngine;
 
 public static class BattleRules
 {
-    private static readonly Dictionary<int, float> ExplosionRisk = new()
+    // 计算当前【下一张将要翻开的牌】的爆牌率
+    public static float GetNextBustRate(BattleData data)
     {
-        {5, 0.05f}, {6, 0.15f}, {7, 0.30f}
-    };
+        int index = data.handCards.Count + 1;
+        int safeZone = (data.selectedMainColor == CardColor.Blue) ? 2 : 1; // 押蓝前2张安全，否则前1张安全
 
-    public static bool CheckExplosion(int handCount, int safeZoneSize)
-    {
-        int riskStartIndex = safeZoneSize + 1;
-        int index = handCount - riskStartIndex + 5;
-        if (index < 5) return false;
-        if (index > 8) return Random.value < 0.50f;
+        if (index <= safeZone) return 0f;
 
-        return ExplosionRisk.TryGetValue(index, out float risk) && Random.value < risk;
+        int riskIndex = index - safeZone;
+        float rate = riskIndex switch
+        {
+            1 => 0.05f,
+            2 => 0.10f,
+            3 => 0.20f,
+            4 => 0.35f,
+            _ => 0.50f
+        };
+
+        if (data.blueComboSafetyNet) rate -= 0.10f; // 蓝4连：安全网
+        return Mathf.Clamp01(rate);
     }
 
-    public static void ApplyCardColorEffect(RuntimeCard card, BattleData data)
+    // 查表获取基础连击倍率
+    public static float GetBaseComboMultiplier(int comboCount)
     {
-        switch (card.color)
-        {
-            case CardColor.Blue:
-                // 回复1血，满血时自动转护盾
-                data.Heal(1);
-                break;
-            case CardColor.Yellow:
-                // 连击倍率+0.1（连击系统待实现）
-                break;
-            case CardColor.Red:
-                // 扣2血，优先消耗护盾
-                data.TakeDamage(2);
-                data.curseCount++;
-                break;
-        }
-    }
-
-    public static bool ShouldTriggerCurse(BattleData data)
-        => data.isCurseReady;
-
-    public static void TriggerCursePenalty(BattleData data)
-    {
-        data.curseCount = 0;
-        var blueCards = data.levelDeck.FindAll(c => c.color == CardColor.Blue);
-        if (blueCards.Count > 0)
-        {
-            int randomIndex = Random.Range(0, blueCards.Count);
-            blueCards[randomIndex].color = CardColor.Yellow;
-        }
+        if (comboCount <= 1) return 1.0f;
+        if (comboCount == 2) return 1.2f;
+        if (comboCount == 3) return 1.4f;
+        if (comboCount == 4) return 1.6f;
+        if (comboCount == 5) return 1.8f;
+        return 2.0f; // 6连及以上
     }
 
     public static List<RuntimeCard> GenerateWeightedDrawPile(List<RuntimeCard> deck, CardColor? mainColor)
     {
         List<RuntimeCard> pile = new List<RuntimeCard>(deck);
-
         if (mainColor.HasValue)
         {
             List<RuntimeCard> mainColorCards = pile.FindAll(c => c.color == mainColor.Value);
             pile.AddRange(mainColorCards);
         }
-
         ShuffleList(pile);
         return pile;
     }
@@ -68,7 +51,6 @@ public static class BattleRules
     public static void EnsureFirstCardIsMainColor(List<RuntimeCard> drawPile, CardColor? mainColor)
     {
         if (!mainColor.HasValue || drawPile.Count == 0) return;
-
         int mainColorIndex = drawPile.FindIndex(c => c.color == mainColor.Value);
         if (mainColorIndex > 0)
         {
@@ -76,15 +58,6 @@ public static class BattleRules
             drawPile.RemoveAt(mainColorIndex);
             drawPile.Insert(0, mainCard);
         }
-        else if (mainColorIndex == -1)
-        {
-            drawPile[0].color = mainColor.Value;
-        }
-    }
-
-    private static CardColor GetFallbackColor(List<RuntimeCard> deck)
-    {
-        return CardColor.Blue;
     }
 
     public static void ShuffleList<T>(List<T> list)

@@ -12,12 +12,8 @@ public class BattleData
     public CardColor bossWeaknessColor;
     public bool firstCardGuaranteed = true;
 
-    private int _currentAttack;
-    public int currentAttack
-    {
-        get => _currentAttack;
-        set => _currentAttack = Mathf.Max(0, value);
-    }
+    // --- 核心数值 ---
+    public int currentAttack { get; set; }
 
     private int _playerHp = 20;
     public int playerHp
@@ -25,98 +21,67 @@ public class BattleData
         get => _playerHp;
         set => _playerHp = Mathf.Clamp(value, 0, maxPlayerHp);
     }
-
-    private int _shield;
-    public int shield
-    {
-        get => _shield;
-        set => _shield = Mathf.Clamp(value, 0, maxShield);
-    }
-    public int maxShield = 10;
-
-    private int _curseCount;
-    public int curseCount
-    {
-        get => _curseCount;
-        set => _curseCount = Mathf.Clamp(value, 0, curseThreshold);
-    }
-
-    private int _bossHp = 100;
-    public int bossHp
-    {
-        get => _bossHp;
-        set => _bossHp = Mathf.Max(0, value);
-    }
-
-    private int _currentTurn = 1;
-    public int currentTurn
-    {
-        get => _currentTurn;
-        set => _currentTurn = Mathf.Clamp(value, 1, maxTurns);
-    }
-
-    public int maxTurns = 4;
     public int maxPlayerHp = 20;
-    public int maxHandSize = 7;
-    public int curseThreshold = 3;
+
+    // 保单系统 (替代护盾)
+    private int _policy;
+    public int policy
+    {
+        get => _policy;
+        set => _policy = Mathf.Clamp(value, 0, maxPolicy);
+    }
+    public int maxPolicy = 12; // 游戏开始时会更新为牌组数量
+
+    // 债痕系统
+    private int _debtCount;
+    public int debtCount
+    {
+        get => _debtCount;
+        set => _debtCount = Mathf.Clamp(value, 0, debtThreshold);
+    }
+    public int debtThreshold = 4;
+
+    // --- 连击系统 ---
+    public int comboCount = 0;
+    public CardColor? comboColor = null;
+    public float bonusYellowMult = 0f; // 黄牌提供的额外倍率
+
+    // 连击技能标记（每回合重置）
+    public bool hasUsedSkipThisTurn = false;
+    public bool nextCardPlusOneAttack = false; // 黄2连
+    public bool yellow4SmoothSailing = false;  // 黄4连
+    public bool blueComboSafetyNet = false;    // 蓝4连
+    public bool blue6SettleReady = false;      // 蓝6连
+    public bool red6DetonateReady = false;     // 红6连
+
+    // --- 关卡信息 ---
+    private int _bossHp = 100;
+    public int bossHp { get => _bossHp; set => _bossHp = Mathf.Max(0, value); }
     public int maxBossHp = 100;
     public int BossDamage = 5;
 
+    private int _currentTurn = 1;
+    public int currentTurn { get => _currentTurn; set => _currentTurn = Mathf.Clamp(value, 1, maxTurns); }
+    public int maxTurns = 4;
+    public int maxHandSize = 7;
+
     public bool isPlayerDead => playerHp <= 0;
     public bool isBossDead => bossHp <= 0;
-
     public bool isMaxTurnsReached => currentTurn >= maxTurns;
 
-    public bool isCurseReady => curseCount >= curseThreshold;
-
-    /// <summary>
-    /// 受到伤害，优先消耗护盾
-    /// </summary>
     public void TakeDamage(int damage)
     {
-        if (damage <= 0) return;
-
-        int shieldDamage = Mathf.Min(damage, shield);
-        shield -= shieldDamage;
-        int remainingDamage = damage - shieldDamage;
-
-        if (remainingDamage > 0)
-        {
-            playerHp -= remainingDamage;
-        }
+        if (damage > 0) playerHp -= damage;
     }
 
-    /// <summary>
-    /// 治疗生命值，满血时转为护盾
-    /// </summary>
     public void Heal(int amount)
     {
-        if (amount <= 0) return;
-
-        int hpMissing = maxPlayerHp - playerHp;
-        int hpHeal = Mathf.Min(amount, hpMissing);
-        playerHp += hpHeal;
-
-        int remainingHeal = amount - hpHeal;
-        if (remainingHeal > 0)
-        {
-            shield += remainingHeal;
-        }
-    }
-
-    /// <summary>
-    /// 护盾衰减（每回合开始时调用）
-    /// </summary>
-    public void DecayShield(int amount = 2)
-    {
-        shield = Mathf.Max(0, shield - amount);
+        if (amount > 0) playerHp += amount;
     }
 
     public int GetMainColorBonus(CardColor color)
     {
-        if (selectedMainColor == null || color != selectedMainColor.Value)
-            return 0;
-
+        if (selectedMainColor == null || color != selectedMainColor.Value) return 0;
         return selectedMainColor.Value switch
         {
             CardColor.Blue => 1,
@@ -126,10 +91,17 @@ public class BattleData
         };
     }
 
-    public int GetSafeZoneSize()
+    // 回合开始时重置临时状态
+    public void ResetTurnData()
     {
-        if (selectedMainColor == CardColor.Blue)
-            return 6;
-        return 4;
+        comboCount = 0;
+        comboColor = null;
+        bonusYellowMult = 0f;
+        hasUsedSkipThisTurn = false;
+        nextCardPlusOneAttack = false;
+        yellow4SmoothSailing = false;
+        blueComboSafetyNet = false;
+        blue6SettleReady = false;
+        red6DetonateReady = false;
     }
 }
