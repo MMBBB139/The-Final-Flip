@@ -10,22 +10,22 @@ public class BattleUI : MonoBehaviour
     [Header("数值面板")]
     public TextMeshProUGUI attackText;
     public TextMeshProUGUI playerHpText;
-    public TextMeshProUGUI policyText;     // 原 shieldText，现改为保单
-    public TextMeshProUGUI debtText;       // 原 curseText，现改为债痕
-    public TextMeshProUGUI comboText;      // 新增：连击显示
-    public TextMeshProUGUI bustRateText;   // 新增：爆牌率显示
+    public TextMeshProUGUI policyText;
+    public TextMeshProUGUI debtText;
+    public TextMeshProUGUI comboText;
+    public TextMeshProUGUI bustRateText;
     public TextMeshProUGUI bossHpText;
     public TextMeshProUGUI turnText;
 
     [Header("主动决策区")]
-    public GameObject pendingActionsPanel; // 包含“收下”和“跳过”按钮的父节点
+    public GameObject pendingActionsPanel;
     public Button takeButton;
     public Button skipButton;
-    public Transform pendingCardArea;      // 发牌中间停顿点
+    public Transform pendingCardArea;
 
     [Header("结算公式面板")]
     public TextMeshProUGUI calcFormulaText;
-    public TextMeshProUGUI floatingText;   // 用于浮动提示(保单生效/回血等)
+    public TextMeshProUGUI floatingText;
 
     [Header("主色选择面板")]
     public GameObject mainColorPanel;
@@ -62,14 +62,24 @@ public class BattleUI : MonoBehaviour
     public Transform drawPileDetailContent;
     public Button closeDrawPileDetailButton;
 
+    [Header("债痕清算面板")]
+    public GameObject debtLiquidationPanel;
+    public Transform debtOptionsContainer;
+    public GameObject debtOptionButtonPrefab;
+    public Button clearDebtButton;
+
     private List<RuntimeCard> currentDrawPile;
     private List<GameObject> detailCardObjects = new List<GameObject>();
     private GameObject currentPendingCardObj;
 
     public event Action<CardColor> OnMainColorSelected;
 
+    private BattleManager battleManager;
+
     private void Awake()
     {
+        battleManager = FindObjectOfType<BattleManager>();
+
         blueButton.onClick.AddListener(() => SelectMainColor(CardColor.Blue));
         yellowButton.onClick.AddListener(() => SelectMainColor(CardColor.Yellow));
         redButton.onClick.AddListener(() => SelectMainColor(CardColor.Red));
@@ -82,10 +92,13 @@ public class BattleUI : MonoBehaviour
 
         drawPile.onClick.AddListener(ShowDrawPileDetailPanel);
 
-        // 初始化新UI状态
+        if (clearDebtButton != null)
+            clearDebtButton.onClick.AddListener(OnClearDebtClicked);
+
         SetPendingState(false);
         if (calcFormulaText != null) calcFormulaText.gameObject.SetActive(false);
         if (floatingText != null) floatingText.gameObject.SetActive(false);
+        if (debtLiquidationPanel != null) debtLiquidationPanel.SetActive(false);
     }
 
     private void SelectMainColor(CardColor color)
@@ -112,6 +125,7 @@ public class BattleUI : MonoBehaviour
         redProbText.text = $"Rate: {probabilities[CardColor.Red]:P0}";
 
         HideDrawPileDetailPanel();
+        HideDebtLiquidationPanel();
     }
 
     public void HideMainColorPanel()
@@ -149,10 +163,77 @@ public class BattleUI : MonoBehaviour
         debtText.text = $"Debt: {data.debtCount}/{data.debtThreshold}";
         bossHpText.text = $"Boss: {data.bossHp}/{data.maxBossHp}";
         turnText.text = $"Turn: {data.currentTurn}/{data.maxTurns}";
+
+        // 更新清债按钮状态
+        if (clearDebtButton != null)
+        {
+            clearDebtButton.interactable = data.debtCount > 0 && !data.hasUsedActiveClearDebtThisTurn;
+        }
     }
 
     // ==========================================
-    // 新增：挂起/停顿确认区 (跳过或收下)
+    // 债痕清算面板
+    // ==========================================
+    public void ShowDebtLiquidationPanel(List<DebtOption> options)
+    {
+        if (debtLiquidationPanel == null || debtOptionsContainer == null) return;
+
+        debtLiquidationPanel.SetActive(true);
+
+        // 清除旧选项
+        foreach (Transform child in debtOptionsContainer)
+        {
+            Destroy(child.gameObject);
+        }
+
+        // 创建新选项按钮
+        for (int i = 0; i < options.Count; i++)
+        {
+            DebtOption option = options[i];
+            int index = i;
+
+            GameObject buttonObj = Instantiate(debtOptionButtonPrefab, debtOptionsContainer);
+
+            TextMeshProUGUI buttonText = buttonObj.GetComponentInChildren<TextMeshProUGUI>();
+            if (buttonText != null)
+            {
+                buttonText.text = $"<b>{option.name}</b>\n{option.description}";
+            }
+
+            Button button = buttonObj.GetComponent<Button>();
+            if (button != null)
+            {
+                button.onClick.AddListener(() => OnDebtOptionClicked(index));
+            }
+        }
+    }
+
+    private void OnDebtOptionClicked(int optionIndex)
+    {
+        if (battleManager != null)
+        {
+            battleManager.OnDebtOptionSelected(optionIndex);
+        }
+    }
+
+    public void HideDebtLiquidationPanel()
+    {
+        if (debtLiquidationPanel != null)
+        {
+            debtLiquidationPanel.SetActive(false);
+        }
+    }
+
+    private void OnClearDebtClicked()
+    {
+        if (battleManager != null)
+        {
+            SendMessage("RequestActiveClearDebt", SendMessageOptions.DontRequireReceiver);
+        }
+    }
+
+    // ==========================================
+    // 挂起/停顿确认区
     // ==========================================
     public void ShowPendingCard(RuntimeCard card)
     {
@@ -174,7 +255,7 @@ public class BattleUI : MonoBehaviour
     }
 
     // ==========================================
-    // 新增：公式与浮动提示
+    // 公式与浮动提示
     // ==========================================
     public void ShowCalcFormula(int baseAtk, float mult, int extra, float weakMult, int total)
     {
@@ -204,7 +285,7 @@ public class BattleUI : MonoBehaviour
     }
 
     // ==========================================
-    // 牌堆信息与查看 (已完整恢复)
+    // 牌堆信息与查看
     // ==========================================
     public void UpdateDrawPileInfo(List<RuntimeCard> drawPile)
     {
@@ -290,13 +371,14 @@ public class BattleUI : MonoBehaviour
     }
 
     // ==========================================
-    // 基础牌桌逻辑与爆牌动画 (已完整恢复)
+    // 基础牌桌逻辑与爆牌动画
     // ==========================================
     public void ShowGameOver(bool isWin)
     {
         gameOverPanel.SetActive(true);
         gameOverTitle.text = isWin ? "<color=green>Victory!</color>" : "<color=red>Defeat!</color>";
         HideDrawPileInfo();
+        HideDebtLiquidationPanel();
     }
 
     public GameObject CreateCardUI(RuntimeCard card)

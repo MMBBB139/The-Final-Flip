@@ -23,14 +23,14 @@ public class BattleData
     }
     public int maxPlayerHp = 20;
 
-    // 保单系统 (替代护盾)
+    // 保单系统
     private int _policy;
     public int policy
     {
         get => _policy;
         set => _policy = Mathf.Clamp(value, 0, maxPolicy);
     }
-    public int maxPolicy = 12; // 游戏开始时会更新为牌组数量
+    public int maxPolicy = 12;
 
     // 债痕系统
     private int _debtCount;
@@ -40,19 +40,41 @@ public class BattleData
         set => _debtCount = Mathf.Clamp(value, 0, debtThreshold);
     }
     public int debtThreshold = 4;
+    public bool hasUsedActiveClearDebtThisTurn = false;
+    public int redCardsPlayedThisTurn = 0;
+
+    // 债痕清算相关
+    public bool isWaitingForDebtChoice = false;
+    public List<DebtOption> currentDebtOptions = null;
+    public bool isDesperado = false; // 亡命徒标记
+    public bool hasAbyssEngraving = false; // 深渊刻印标记
+
+    // 清算效果标记
+    public bool nextCardAttackDoubled = false;
+    public int forcedDrawCount = 0;
+    public int forcedDrawBonus = 0;
+    public bool shouldStopImmediately = false;
+    public bool colorLockActive = false;
+    public int colorLockBonus = 0;
+    public bool policyOverdraftNextTurn = false;
+    public bool loanSharkActive = false;
+    public bool peekDeckActive = false;
+    public bool cutCardsActive = false;
+    public bool allOrNothingActive = false;
+    public bool rainbowRunActive = false;
+    public bool nearDeathActive = false;
 
     // --- 连击系统 ---
     public int comboCount = 0;
     public CardColor? comboColor = null;
-    public float bonusYellowMult = 0f; // 黄牌提供的额外倍率
+    public float bonusYellowMult = 0f;
 
-    // 连击技能标记（每回合重置）
     public bool hasUsedSkipThisTurn = false;
-    public bool nextCardPlusOneAttack = false; // 黄2连
-    public bool yellow4SmoothSailing = false;  // 黄4连
-    public bool blueComboSafetyNet = false;    // 蓝4连
-    public bool blue6SettleReady = false;      // 蓝6连
-    public bool red6DetonateReady = false;     // 红6连
+    public bool nextCardPlusOneAttack = false;
+    public bool yellow4SmoothSailing = false;
+    public bool blueComboSafetyNet = false;
+    public bool blue6SettleReady = false;
+    public bool red6DetonateReady = false;
 
     // --- 关卡信息 ---
     private int _bossHp = 100;
@@ -91,7 +113,6 @@ public class BattleData
         };
     }
 
-    // 回合开始时重置临时状态
     public void ResetTurnData()
     {
         comboCount = 0;
@@ -103,5 +124,18 @@ public class BattleData
         blueComboSafetyNet = false;
         blue6SettleReady = false;
         red6DetonateReady = false;
+        redCardsPlayedThisTurn = 0;
+        hasUsedActiveClearDebtThisTurn = false;
+
+        // 重置清算效果标记
+        nextCardAttackDoubled = false;
+        forcedDrawCount = 0;
+        forcedDrawBonus = 0;
+        shouldStopImmediately = false;
+        colorLockActive = false;
+        colorLockBonus = 0;
+        allOrNothingActive = false;
+        rainbowRunActive = false;
+        nearDeathActive = false;
     }
 }

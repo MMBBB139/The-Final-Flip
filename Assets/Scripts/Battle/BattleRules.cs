@@ -7,7 +7,7 @@ public static class BattleRules
     public static float GetNextBustRate(BattleData data)
     {
         int index = data.handCards.Count + 1;
-        int safeZone = (data.selectedMainColor == CardColor.Blue) ? 2 : 1; // 押蓝前2张安全，否则前1张安全
+        int safeZone = (data.selectedMainColor == CardColor.Blue) ? 2 : 1;
 
         if (index <= safeZone) return 0f;
 
@@ -21,7 +21,7 @@ public static class BattleRules
             _ => 0.50f
         };
 
-        if (data.blueComboSafetyNet) rate -= 0.10f; // 蓝4连：安全网
+        if (data.blueComboSafetyNet) rate -= 0.10f;
         return Mathf.Clamp01(rate);
     }
 
@@ -33,7 +33,7 @@ public static class BattleRules
         if (comboCount == 3) return 1.4f;
         if (comboCount == 4) return 1.6f;
         if (comboCount == 5) return 1.8f;
-        return 2.0f; // 6连及以上
+        return 2.0f;
     }
 
     public static List<RuntimeCard> GenerateWeightedDrawPile(List<RuntimeCard> deck, CardColor? mainColor)

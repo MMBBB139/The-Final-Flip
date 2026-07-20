@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 public static class GameEvents
@@ -22,6 +23,10 @@ public static class GameEvents
     public static event Action<CardColor> OnMainColorSelected;
     public static event Action OnMainColorSelectionStarted;
 
+    // 债痕清算
+    public static event Action<List<DebtOption>> OnDebtLiquidationTriggered;
+    public static event Action<DebtOption> OnDebtOptionSelected;
+
     public static void RaiseTurnStarted() => OnTurnStarted?.Invoke();
     public static void RaiseTurnEnded() => OnTurnEnded?.Invoke();
     public static void RaiseGameEnded(bool isWin) => OnGameEnded?.Invoke(isWin);
@@ -33,4 +38,6 @@ public static class GameEvents
     public static void RaiseFloatingText(string msg) => OnFloatingText?.Invoke(msg);
     public static void RaiseMainColorSelected(CardColor color) => OnMainColorSelected?.Invoke(color);
     public static void RaiseMainColorSelectionStarted() => OnMainColorSelectionStarted?.Invoke();
+    public static void RaiseDebtLiquidationTriggered(List<DebtOption> options) => OnDebtLiquidationTriggered?.Invoke(options);
+    public static void RaiseDebtOptionSelected(DebtOption option) => OnDebtOptionSelected?.Invoke(option);
 }

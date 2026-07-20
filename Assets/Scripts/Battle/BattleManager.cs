@@ -19,6 +19,7 @@ public class BattleManager : MonoBehaviour
     private RuntimeCard pendingCard;
     private ComboManager comboManager;
     private CardEffectExecutor cardExecutor;
+    private DebtManager debtManager;
 
     void Start()
     {
@@ -26,6 +27,7 @@ public class BattleManager : MonoBehaviour
 
         comboManager = new ComboManager(data);
         cardExecutor = new CardEffectExecutor(data, comboManager);
+        debtManager = cardExecutor.GetDebtManager();
 
         drawButton.onClick.AddListener(OnDrawClicked);
         stopButton.onClick.AddListener(OnStopClicked);
@@ -34,6 +36,9 @@ public class BattleManager : MonoBehaviour
         if (battleUI.takeButton != null) battleUI.takeButton.onClick.AddListener(OnTakePendingCard);
         if (battleUI.skipButton != null) battleUI.skipButton.onClick.AddListener(OnSkipPendingCard);
 
+        // 监听清算触发事件
+        GameEvents.OnDebtLiquidationTriggered += OnDebtLiquidationTriggeredHandler;
+
         GameEvents.OnFloatingText += msg => battleUI.ShowFloatingText(msg);
 
         data.levelDeck = deckManager.GenerateInitialDeck(12);
@@ -41,6 +46,60 @@ public class BattleManager : MonoBehaviour
 
         battleUI.HideDrawPileInfo();
         StartMainColorSelection();
+    }
+
+    private void OnDebtLiquidationTriggeredHandler(List<DebtOption> options)
+    {
+        // 显示清算选择面板
+        battleUI.ShowDebtLiquidationPanel(options);
+
+        // 暂停游戏流程
+        drawButton.interactable = false;
+        stopButton.interactable = false;
+    }
+
+    public void OnDebtOptionSelected(int optionIndex)
+    {
+        if (data.currentDebtOptions == null || optionIndex >= data.currentDebtOptions.Count)
+            return;
+
+        DebtOption selected = data.currentDebtOptions[optionIndex];
+        debtManager.OnDebtOptionSelected(selected);
+
+        // 隐藏面板
+        battleUI.HideDebtLiquidationPanel();
+
+        // 检查是否需要立即停手
+        if (data.shouldStopImmediately)
+        {
+            data.shouldStopImmediately = false;
+            OnStopClicked();
+        }
+        else
+        {
+            // 恢复游戏流程
+            drawButton.interactable = !isBusted;
+            stopButton.interactable = !isBusted;
+        }
+
+        RefreshUI();
+    }
+
+    /// <summary>
+    /// 处理主动清债请求（由UI按钮触发）
+    /// </summary>
+    public void RequestActiveClearDebt()
+    {
+        bool success = debtManager.ActiveClearDebt();
+        if (success)
+        {
+            battleUI.ShowFloatingText("Debt cleared! -3 HP");
+        }
+        else
+        {
+            battleUI.ShowFloatingText("Cannot clear debt now!");
+        }
+        RefreshUI();
     }
 
     private void StartMainColorSelection()
@@ -112,6 +171,13 @@ public class BattleManager : MonoBehaviour
         data.drawPile.RemoveAt(0);
 
         float bustRate = BattleRules.GetNextBustRate(data);
+
+        if (data.nearDeathActive)
+            bustRate = 0f;
+
+        if (data.allOrNothingActive)
+            bustRate *= 2f;
+
         if (Random.value < bustRate)
         {
             if (data.policy > 0)
@@ -126,7 +192,6 @@ public class BattleManager : MonoBehaviour
             }
         }
 
-        // 进入挂起状态
         drawButton.interactable = false;
         stopButton.interactable = false;
         GameEvents.RaiseCardDrawn(pendingCard);
@@ -170,18 +235,22 @@ public class BattleManager : MonoBehaviour
         data.handCards.Add(drawn);
         data.firstCardGuaranteed = false;
 
-        // 委托给CardPlayResolver结算
         cardExecutor.ExecuteTakeCard(drawn);
         GameEvents.RaiseCardTaken(drawn);
 
-        // 检查玩家死亡
         if (data.isPlayerDead)
         {
             StartCoroutine(DelayedEnd(false));
             return;
         }
 
-        // 创建卡牌UI并播放动画
+        if (data.shouldStopImmediately)
+        {
+            data.shouldStopImmediately = false;
+            OnStopClicked();
+            return;
+        }
+
         GameObject cardObj = battleUI.CreateCardUI(drawn);
         if (battleUI.handArea != null)
             UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(battleUI.handArea as RectTransform);
@@ -192,6 +261,20 @@ public class BattleManager : MonoBehaviour
         RefreshUI();
         drawButton.interactable = true;
         stopButton.interactable = true;
+
+        if (data.forcedDrawCount > 0 && !isBusted && data.drawPile.Count > 0)
+        {
+            StartCoroutine(AutoDrawNextCard());
+        }
+    }
+
+    private IEnumerator AutoDrawNextCard()
+    {
+        yield return new WaitForSeconds(0.5f);
+        if (data.forcedDrawCount > 0 && !isBusted && data.drawPile.Count > 0 && pendingCard == null)
+        {
+            OnDrawClicked();
+        }
     }
 
     private void HandleExplosion()
@@ -223,14 +306,23 @@ public class BattleManager : MonoBehaviour
     private IEnumerator ExecuteBustEndTurn()
     {
         yield return new WaitForSeconds(1.5f);
+        debtManager.PassiveClearDebt();
         StartCoroutine(BossAttackPhase());
     }
 
     private void OnStopClicked()
     {
+        if (data.isWaitingForDebtChoice) return;
+
         drawButton.interactable = false;
         stopButton.interactable = false;
         battleUI.HideDrawPileInfo();
+
+        if (data.nearDeathActive)
+        {
+            data.playerHp = 1;
+            data.nearDeathActive = false;
+        }
 
         float finalMult = BattleRules.GetBaseComboMultiplier(data.comboCount) + data.bonusYellowMult;
         int extraDmg = comboManager.CalculateExtraDamage();
@@ -248,6 +340,9 @@ public class BattleManager : MonoBehaviour
 
         battleUI.ShowCalcFormula(data.currentAttack, finalMult, extraDmg, weakMult, finalDamage);
         data.bossHp -= finalDamage;
+
+        debtManager.PassiveClearDebt();
+
         RefreshUI();
 
         GameEvents.RaiseTurnEnded();
@@ -302,5 +397,6 @@ public class BattleManager : MonoBehaviour
     private void OnDestroy()
     {
         GameEvents.OnFloatingText -= msg => battleUI.ShowFloatingText(msg);
+        GameEvents.OnDebtLiquidationTriggered -= OnDebtLiquidationTriggeredHandler;
     }
 }

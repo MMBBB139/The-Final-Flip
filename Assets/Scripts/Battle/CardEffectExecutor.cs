@@ -7,11 +7,13 @@ public class CardEffectExecutor
 {
     private BattleData data;
     private ComboManager comboManager;
+    private DebtManager debtManager;
 
     public CardEffectExecutor(BattleData data, ComboManager comboManager)
     {
         this.data = data;
         this.comboManager = comboManager;
+        this.debtManager = new DebtManager(data);
     }
 
     /// <summary>
@@ -23,11 +25,46 @@ public class CardEffectExecutor
         int baseAtk = drawn.rank;
         int betBonus = data.GetMainColorBonus(drawn.color);
 
+        // 彩虹跑：所有牌视为押注花色
+        if (data.rainbowRunActive)
+        {
+            betBonus = data.GetMainColorBonus(data.selectedMainColor ?? CardColor.Blue);
+        }
+
         // 黄4连：手风大顺，押注加成翻倍
         if (data.yellow4SmoothSailing && drawn.color == CardColor.Yellow)
             betBonus *= 2;
 
+        // 颜色锁定加成
+        if (data.colorLockActive)
+        {
+            if (drawn.color == data.selectedMainColor)
+            {
+                betBonus += data.colorLockBonus;
+            }
+        }
+
+        // 强制抽牌加成
+        if (data.forcedDrawCount > 0)
+        {
+            betBonus += data.forcedDrawBonus;
+            data.forcedDrawCount--;
+        }
+
+        // 孤注一掷加成
+        if (data.allOrNothingActive)
+        {
+            betBonus += 2;
+        }
+
         int finalCardAtk = baseAtk + betBonus;
+
+        // 翻倍或归零
+        if (data.nextCardAttackDoubled)
+        {
+            finalCardAtk *= 2;
+            data.nextCardAttackDoubled = false;
+        }
 
         // 连击处理
         comboManager.ProcessCombo(drawn, ref finalCardAtk);
@@ -45,9 +82,6 @@ public class CardEffectExecutor
 
     /// <summary>
     /// 应用卡牌颜色对应的基础效果
-    /// - 蓝牌：获得1份保单
-    /// - 黄牌：增加连击倍率
-    /// - 红牌：自伤 + 累积债痕
     /// </summary>
     private void ApplyColorEffect(RuntimeCard drawn, int finalCardAtk)
     {
@@ -65,14 +99,16 @@ public class CardEffectExecutor
             case CardColor.Red:
                 int hpDmg = Mathf.CeilToInt(finalCardAtk * 0.2f);
                 data.TakeDamage(hpDmg);
-                data.debtCount++;
-
-                if (data.debtCount >= data.debtThreshold)
-                {
-                    data.debtCount = 0;
-                    GameEvents.RaiseFloatingText("Debt full! Liquidation triggered!");
-                }
+                debtManager.AddDebt();
                 break;
         }
+    }
+
+    /// <summary>
+    /// 获取DebtManager实例
+    /// </summary>
+    public DebtManager GetDebtManager()
+    {
+        return debtManager;
     }
 }
