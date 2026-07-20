@@ -57,7 +57,6 @@ public class BattleData
     public int comboCount = 0;
     public CardColor? comboColor = null;
     public float bonusYellowMult = 0f;
-    public bool nextCardDoubled = false;
 
     // 保单跳过
     public bool hasUsedSkipThisTurn = false;
@@ -105,7 +104,6 @@ public class BattleData
         comboColor = null;
         bonusYellowMult = 0f;
         hasUsedSkipThisTurn = false;
-        nextCardDoubled = false;
 
         nextCardAttackDoubled = false;
         shouldStopImmediately = false;

@@ -308,7 +308,6 @@ public class BattleManager : MonoBehaviour
     private IEnumerator BossAttackPhase()
     {
         yield return new WaitForSeconds(1.5f);
-        battleUI.HideCalcFormula();
 
         data.TakeDamage(data.BossDamage);
         RefreshUI();

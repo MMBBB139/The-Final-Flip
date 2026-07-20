@@ -92,7 +92,6 @@ public class BattleUI : MonoBehaviour
         drawPile.onClick.AddListener(ShowDrawPileDetailPanel);
 
         SetPendingState(false);
-        if (calcFormulaText != null) calcFormulaText.gameObject.SetActive(false);
         if (floatingText != null) floatingText.gameObject.SetActive(false);
         if (debtLiquidationPanel != null) debtLiquidationPanel.SetActive(false);
     }
@@ -159,6 +158,21 @@ public class BattleUI : MonoBehaviour
         debtText.text = $"Debt: {data.debtCount}/{data.debtThreshold}";
         bossHpText.text = $"Boss: {data.bossHp}/{data.maxBossHp}";
         turnText.text = $"Turn: {data.currentTurn}/{data.maxTurns}";
+
+        // 实时预览伤害公式
+        UpdateCalcFormulaPreview(data);
+    }
+
+    private void UpdateCalcFormulaPreview(BattleData data)
+    {
+        if (calcFormulaText == null) return;
+
+        float finalMult = BattleRules.GetBaseComboMultiplier(data.comboCount) + data.bonusYellowMult;
+        float weakMult = (data.selectedMainColor == data.bossWeaknessColor) ? 1.5f : 1.0f;
+        int previewDamage = Mathf.CeilToInt(data.currentAttack * finalMult * weakMult);
+
+        calcFormulaText.gameObject.SetActive(data.currentAttack > 0);
+        calcFormulaText.text = $"{data.currentAttack} x {finalMult:F1} x {weakMult:F1} = <color=red>{previewDamage}</color>";
     }
 
     public void ShowDebtLiquidationPanel(List<DebtOption> options)

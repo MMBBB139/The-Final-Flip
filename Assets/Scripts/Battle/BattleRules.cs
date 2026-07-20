@@ -26,9 +26,8 @@ public static class BattleRules
     public static float GetBaseComboMultiplier(int comboCount)
     {
         if (comboCount <= 1) return 1.0f;
-        if (comboCount == 2) return 1.2f;
-        if (comboCount == 3) return 1.4f;
-        return 1.6f; // 4连及以上
+        if (comboCount == 2) return 1.5f;
+        return 2.0f; // 3连+
     }
 
     public static List<RuntimeCard> GenerateWeightedDrawPile(List<RuntimeCard> deck, CardColor? mainColor)
