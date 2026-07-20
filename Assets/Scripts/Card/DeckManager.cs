@@ -14,9 +14,9 @@ public class DeckManager : MonoBehaviour
     // 初始牌组颜色比例
     private static readonly Dictionary<CardColor, float> ColorRatios = new()
     {
-        { CardColor.Blue, 0.50f },
+        { CardColor.Blue, 0.34f },
         { CardColor.Yellow, 0.33f },
-        { CardColor.Red, 0.17f }
+        { CardColor.Red, 0.33f }
     };
 
     /// <summary>

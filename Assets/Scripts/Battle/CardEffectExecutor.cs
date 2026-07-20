@@ -60,6 +60,7 @@ public class CardEffectExecutor
         {
             case CardColor.Blue:
                 data.policy++;
+                data.Heal(1);
                 break;
             case CardColor.Yellow:
                 data.bonusYellowMult += 0.1f;

@@ -11,11 +11,11 @@ public class ComboManager
 
     public void ProcessCombo(RuntimeCard drawn, ref int finalCardAtk)
     {
-        // 2连奖励：下一张同色牌攻击力+1
-        if (data.nextCardPlusOneAttack && drawn.color == data.comboColor)
+        // 2连奖励
+        if (data.nextCardDoubled && drawn.color == data.comboColor)
         {
-            finalCardAtk += 1;
-            data.nextCardPlusOneAttack = false;
+            finalCardAtk *= 2;
+            data.nextCardDoubled = false;
         }
 
         // 更新连击计数
@@ -30,8 +30,8 @@ public class ComboManager
         // 统一2连奖励
         if (data.comboCount == 2)
         {
-            data.nextCardPlusOneAttack = true;
-            GameEvents.RaiseFloatingText($"Combo x2! Next {drawn.color} card +1 ATK.");
+            data.nextCardDoubled = true;
+            GameEvents.RaiseFloatingText($"Combo x2! Next {drawn.color} card ATK doubled!");
         }
 
         // 统一4连奖励：额外触发一次该花色基础效果

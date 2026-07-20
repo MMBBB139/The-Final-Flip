@@ -90,6 +90,9 @@ public class DebtManager
 
     private void TriggerLiquidation()
     {
+        data.TakeDamage(2);
+        GameEvents.RaiseFloatingText("Debt collected! -2 HP.");
+
         List<DebtOption> availableOptions = new List<DebtOption>(debtOptions);
         int optionCount = data.isDesperado ? 4 : 3;
         List<DebtOption> selected = GetRandomOptions(availableOptions, Mathf.Min(optionCount, availableOptions.Count));

@@ -251,7 +251,7 @@ public class BattleUI : MonoBehaviour
     {
         floatingText.text = msg;
         floatingText.gameObject.SetActive(true);
-        yield return new WaitForSeconds(1.5f);
+        yield return new WaitForSeconds(3f);
         floatingText.gameObject.SetActive(false);
     }
 

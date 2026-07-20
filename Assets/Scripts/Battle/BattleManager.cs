@@ -111,9 +111,11 @@ public class BattleManager : MonoBehaviour
         data.selectedMainColor = color;
         data.firstCardGuaranteed = true;
 
+        // 押蓝：+1保单（原来是+2）
         if (color == CardColor.Blue)
-            data.policy = Mathf.Min(data.policy + 2, data.maxPolicy);
+            data.policy = Mathf.Min(data.policy + 1, data.maxPolicy);
 
+        // 押红：债痕+1
         if (color == CardColor.Red)
             data.debtCount = Mathf.Min(data.debtCount + 1, data.debtThreshold);
 
@@ -152,10 +154,12 @@ public class BattleManager : MonoBehaviour
 
         if (Random.value < bustRate)
         {
-            if (data.policy > 0)
+            // 爆牌消耗2份保单（原来是1份），攻击力保留50%
+            if (data.policy >= 2)
             {
-                data.policy--;
-                GameEvents.RaiseFloatingText("Policy saved you from bust!");
+                data.policy -= 2;
+                data.currentAttack = Mathf.FloorToInt(data.currentAttack * 0.5f);
+                GameEvents.RaiseFloatingText("Policy used! Bust halved, ATK retained 50%.");
             }
             else
             {
@@ -280,7 +284,7 @@ public class BattleManager : MonoBehaviour
         float weakMult = (data.selectedMainColor == data.bossWeaknessColor) ? 1.5f : 1.0f;
         int finalDamage = Mathf.CeilToInt(totalBase * weakMult);
 
-        int healAmt = data.policy / 2;
+        int healAmt = data.policy;
         if (healAmt > 0)
         {
             data.Heal(healAmt);

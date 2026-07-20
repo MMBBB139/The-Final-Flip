@@ -34,11 +34,6 @@ public static class BattleRules
     public static List<RuntimeCard> GenerateWeightedDrawPile(List<RuntimeCard> deck, CardColor? mainColor)
     {
         List<RuntimeCard> pile = new List<RuntimeCard>(deck);
-        if (mainColor.HasValue)
-        {
-            List<RuntimeCard> mainColorCards = pile.FindAll(c => c.color == mainColor.Value);
-            pile.AddRange(mainColorCards);
-        }
         ShuffleList(pile);
         return pile;
     }
