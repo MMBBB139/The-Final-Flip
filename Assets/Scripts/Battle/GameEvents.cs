@@ -4,26 +4,21 @@ using UnityEngine;
 
 public static class GameEvents
 {
-    // 回合流程
     public static event Action OnTurnStarted;
     public static event Action OnTurnEnded;
     public static event Action<bool> OnGameEnded;
 
-    // 卡牌操作
     public static event Action<RuntimeCard> OnCardDrawn;
     public static event Action<RuntimeCard> OnCardTaken;
     public static event Action<RuntimeCard> OnCardSkipped;
     public static event Action OnBusted;
 
-    // 数据变化
     public static event Action<BattleData> OnDataChanged;
     public static event Action<string> OnFloatingText;
 
-    // 主色选择
     public static event Action<CardColor> OnMainColorSelected;
     public static event Action OnMainColorSelectionStarted;
 
-    // 债痕清算
     public static event Action<List<DebtOption>> OnDebtLiquidationTriggered;
     public static event Action<DebtOption> OnDebtOptionSelected;
 

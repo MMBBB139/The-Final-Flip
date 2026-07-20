@@ -3,7 +3,6 @@ using UnityEngine;
 
 public static class BattleRules
 {
-    // 计算当前【下一张将要翻开的牌】的爆牌率
     public static float GetNextBustRate(BattleData data)
     {
         int index = data.handCards.Count + 1;
@@ -21,19 +20,15 @@ public static class BattleRules
             _ => 0.50f
         };
 
-        if (data.blueComboSafetyNet) rate -= 0.10f;
         return Mathf.Clamp01(rate);
     }
 
-    // 查表获取基础连击倍率
     public static float GetBaseComboMultiplier(int comboCount)
     {
         if (comboCount <= 1) return 1.0f;
         if (comboCount == 2) return 1.2f;
         if (comboCount == 3) return 1.4f;
-        if (comboCount == 4) return 1.6f;
-        if (comboCount == 5) return 1.8f;
-        return 2.0f;
+        return 1.6f; // 4连及以上
     }
 
     public static List<RuntimeCard> GenerateWeightedDrawPile(List<RuntimeCard> deck, CardColor? mainColor)

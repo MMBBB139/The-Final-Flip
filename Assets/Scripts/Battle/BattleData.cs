@@ -40,41 +40,27 @@ public class BattleData
         set => _debtCount = Mathf.Clamp(value, 0, debtThreshold);
     }
     public int debtThreshold = 4;
-    public bool hasUsedActiveClearDebtThisTurn = false;
-    public int redCardsPlayedThisTurn = 0;
 
     // 债痕清算相关
     public bool isWaitingForDebtChoice = false;
     public List<DebtOption> currentDebtOptions = null;
-    public bool isDesperado = false; // 亡命徒标记
-    public bool hasAbyssEngraving = false; // 深渊刻印标记
+    public bool isDesperado = false;
 
     // 清算效果标记
     public bool nextCardAttackDoubled = false;
-    public int forcedDrawCount = 0;
-    public int forcedDrawBonus = 0;
     public bool shouldStopImmediately = false;
     public bool colorLockActive = false;
     public int colorLockBonus = 0;
-    public bool policyOverdraftNextTurn = false;
-    public bool loanSharkActive = false;
     public bool peekDeckActive = false;
-    public bool cutCardsActive = false;
-    public bool allOrNothingActive = false;
-    public bool rainbowRunActive = false;
-    public bool nearDeathActive = false;
 
     // --- 连击系统 ---
     public int comboCount = 0;
     public CardColor? comboColor = null;
     public float bonusYellowMult = 0f;
-
-    public bool hasUsedSkipThisTurn = false;
     public bool nextCardPlusOneAttack = false;
-    public bool yellow4SmoothSailing = false;
-    public bool blueComboSafetyNet = false;
-    public bool blue6SettleReady = false;
-    public bool red6DetonateReady = false;
+
+    // 保单跳过
+    public bool hasUsedSkipThisTurn = false;
 
     // --- 关卡信息 ---
     private int _bossHp = 100;
@@ -120,22 +106,11 @@ public class BattleData
         bonusYellowMult = 0f;
         hasUsedSkipThisTurn = false;
         nextCardPlusOneAttack = false;
-        yellow4SmoothSailing = false;
-        blueComboSafetyNet = false;
-        blue6SettleReady = false;
-        red6DetonateReady = false;
-        redCardsPlayedThisTurn = 0;
-        hasUsedActiveClearDebtThisTurn = false;
 
         // 重置清算效果标记
         nextCardAttackDoubled = false;
-        forcedDrawCount = 0;
-        forcedDrawBonus = 0;
         shouldStopImmediately = false;
         colorLockActive = false;
         colorLockBonus = 0;
-        allOrNothingActive = false;
-        rainbowRunActive = false;
-        nearDeathActive = false;
     }
 }

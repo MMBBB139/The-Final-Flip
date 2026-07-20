@@ -66,7 +66,6 @@ public class BattleUI : MonoBehaviour
     public GameObject debtLiquidationPanel;
     public Transform debtOptionsContainer;
     public GameObject debtOptionButtonPrefab;
-    public Button clearDebtButton;
 
     private List<RuntimeCard> currentDrawPile;
     private List<GameObject> detailCardObjects = new List<GameObject>();
@@ -91,9 +90,6 @@ public class BattleUI : MonoBehaviour
             closeDrawPileDetailButton.onClick.AddListener(HideDrawPileDetailPanel);
 
         drawPile.onClick.AddListener(ShowDrawPileDetailPanel);
-
-        if (clearDebtButton != null)
-            clearDebtButton.onClick.AddListener(OnClearDebtClicked);
 
         SetPendingState(false);
         if (calcFormulaText != null) calcFormulaText.gameObject.SetActive(false);
@@ -163,30 +159,19 @@ public class BattleUI : MonoBehaviour
         debtText.text = $"Debt: {data.debtCount}/{data.debtThreshold}";
         bossHpText.text = $"Boss: {data.bossHp}/{data.maxBossHp}";
         turnText.text = $"Turn: {data.currentTurn}/{data.maxTurns}";
-
-        // 更新清债按钮状态
-        if (clearDebtButton != null)
-        {
-            clearDebtButton.interactable = data.debtCount > 0 && !data.hasUsedActiveClearDebtThisTurn;
-        }
     }
 
-    // ==========================================
-    // 债痕清算面板
-    // ==========================================
     public void ShowDebtLiquidationPanel(List<DebtOption> options)
     {
         if (debtLiquidationPanel == null || debtOptionsContainer == null) return;
 
         debtLiquidationPanel.SetActive(true);
 
-        // 清除旧选项
         foreach (Transform child in debtOptionsContainer)
         {
             Destroy(child.gameObject);
         }
 
-        // 创建新选项按钮
         for (int i = 0; i < options.Count; i++)
         {
             DebtOption option = options[i];
@@ -224,17 +209,6 @@ public class BattleUI : MonoBehaviour
         }
     }
 
-    private void OnClearDebtClicked()
-    {
-        if (battleManager != null)
-        {
-            SendMessage("RequestActiveClearDebt", SendMessageOptions.DontRequireReceiver);
-        }
-    }
-
-    // ==========================================
-    // 挂起/停顿确认区
-    // ==========================================
     public void ShowPendingCard(RuntimeCard card)
     {
         if (pendingCardArea == null) return;
@@ -254,9 +228,6 @@ public class BattleUI : MonoBehaviour
         if (pendingActionsPanel != null) pendingActionsPanel.SetActive(isPending);
     }
 
-    // ==========================================
-    // 公式与浮动提示
-    // ==========================================
     public void ShowCalcFormula(int baseAtk, float mult, int extra, float weakMult, int total)
     {
         if (calcFormulaText == null) return;
@@ -284,9 +255,6 @@ public class BattleUI : MonoBehaviour
         floatingText.gameObject.SetActive(false);
     }
 
-    // ==========================================
-    // 牌堆信息与查看
-    // ==========================================
     public void UpdateDrawPileInfo(List<RuntimeCard> drawPile)
     {
         currentDrawPile = drawPile;
@@ -370,9 +338,6 @@ public class BattleUI : MonoBehaviour
         };
     }
 
-    // ==========================================
-    // 基础牌桌逻辑与爆牌动画
-    // ==========================================
     public void ShowGameOver(bool isWin)
     {
         gameOverPanel.SetActive(true);

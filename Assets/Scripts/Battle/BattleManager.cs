@@ -36,9 +36,7 @@ public class BattleManager : MonoBehaviour
         if (battleUI.takeButton != null) battleUI.takeButton.onClick.AddListener(OnTakePendingCard);
         if (battleUI.skipButton != null) battleUI.skipButton.onClick.AddListener(OnSkipPendingCard);
 
-        // 监听清算触发事件
         GameEvents.OnDebtLiquidationTriggered += OnDebtLiquidationTriggeredHandler;
-
         GameEvents.OnFloatingText += msg => battleUI.ShowFloatingText(msg);
 
         data.levelDeck = deckManager.GenerateInitialDeck(12);
@@ -50,10 +48,7 @@ public class BattleManager : MonoBehaviour
 
     private void OnDebtLiquidationTriggeredHandler(List<DebtOption> options)
     {
-        // 显示清算选择面板
         battleUI.ShowDebtLiquidationPanel(options);
-
-        // 暂停游戏流程
         drawButton.interactable = false;
         stopButton.interactable = false;
     }
@@ -66,10 +61,8 @@ public class BattleManager : MonoBehaviour
         DebtOption selected = data.currentDebtOptions[optionIndex];
         debtManager.OnDebtOptionSelected(selected);
 
-        // 隐藏面板
         battleUI.HideDebtLiquidationPanel();
 
-        // 检查是否需要立即停手
         if (data.shouldStopImmediately)
         {
             data.shouldStopImmediately = false;
@@ -77,28 +70,10 @@ public class BattleManager : MonoBehaviour
         }
         else
         {
-            // 恢复游戏流程
             drawButton.interactable = !isBusted;
             stopButton.interactable = !isBusted;
         }
 
-        RefreshUI();
-    }
-
-    /// <summary>
-    /// 处理主动清债请求（由UI按钮触发）
-    /// </summary>
-    public void RequestActiveClearDebt()
-    {
-        bool success = debtManager.ActiveClearDebt();
-        if (success)
-        {
-            battleUI.ShowFloatingText("Debt cleared! -3 HP");
-        }
-        else
-        {
-            battleUI.ShowFloatingText("Cannot clear debt now!");
-        }
         RefreshUI();
     }
 
@@ -139,6 +114,9 @@ public class BattleManager : MonoBehaviour
         if (color == CardColor.Blue)
             data.policy = Mathf.Min(data.policy + 2, data.maxPolicy);
 
+        if (color == CardColor.Red)
+            data.debtCount = Mathf.Min(data.debtCount + 1, data.debtThreshold);
+
         GameEvents.RaiseMainColorSelected(color);
         StartNewTurn();
     }
@@ -172,18 +150,12 @@ public class BattleManager : MonoBehaviour
 
         float bustRate = BattleRules.GetNextBustRate(data);
 
-        if (data.nearDeathActive)
-            bustRate = 0f;
-
-        if (data.allOrNothingActive)
-            bustRate *= 2f;
-
         if (Random.value < bustRate)
         {
             if (data.policy > 0)
             {
                 data.policy--;
-                GameEvents.RaiseFloatingText("Policy active! Bust prevented!");
+                GameEvents.RaiseFloatingText("Policy saved you from bust!");
             }
             else
             {
@@ -261,20 +233,6 @@ public class BattleManager : MonoBehaviour
         RefreshUI();
         drawButton.interactable = true;
         stopButton.interactable = true;
-
-        if (data.forcedDrawCount > 0 && !isBusted && data.drawPile.Count > 0)
-        {
-            StartCoroutine(AutoDrawNextCard());
-        }
-    }
-
-    private IEnumerator AutoDrawNextCard()
-    {
-        yield return new WaitForSeconds(0.5f);
-        if (data.forcedDrawCount > 0 && !isBusted && data.drawPile.Count > 0 && pendingCard == null)
-        {
-            OnDrawClicked();
-        }
     }
 
     private void HandleExplosion()
@@ -306,7 +264,6 @@ public class BattleManager : MonoBehaviour
     private IEnumerator ExecuteBustEndTurn()
     {
         yield return new WaitForSeconds(1.5f);
-        debtManager.PassiveClearDebt();
         StartCoroutine(BossAttackPhase());
     }
 
@@ -318,16 +275,8 @@ public class BattleManager : MonoBehaviour
         stopButton.interactable = false;
         battleUI.HideDrawPileInfo();
 
-        if (data.nearDeathActive)
-        {
-            data.playerHp = 1;
-            data.nearDeathActive = false;
-        }
-
         float finalMult = BattleRules.GetBaseComboMultiplier(data.comboCount) + data.bonusYellowMult;
-        int extraDmg = comboManager.CalculateExtraDamage();
-
-        float totalBase = (data.currentAttack * finalMult) + extraDmg;
+        float totalBase = data.currentAttack * finalMult;
         float weakMult = (data.selectedMainColor == data.bossWeaknessColor) ? 1.5f : 1.0f;
         int finalDamage = Mathf.CeilToInt(totalBase * weakMult);
 
@@ -338,11 +287,8 @@ public class BattleManager : MonoBehaviour
             GameEvents.RaiseFloatingText($"Rest Heal: +{healAmt}");
         }
 
-        battleUI.ShowCalcFormula(data.currentAttack, finalMult, extraDmg, weakMult, finalDamage);
+        battleUI.ShowCalcFormula(data.currentAttack, finalMult, 0, weakMult, finalDamage);
         data.bossHp -= finalDamage;
-
-        debtManager.PassiveClearDebt();
-
         RefreshUI();
 
         GameEvents.RaiseTurnEnded();
