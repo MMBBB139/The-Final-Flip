@@ -34,51 +34,22 @@ public class ChipsManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 增加筹码
+    /// 修改筹码（正数为增加，负数为减少，最少锁到0）
     /// </summary>
     public void AddChips(int amount)
     {
-        if (amount <= 0)
-        {
-            Debug.LogWarning("AddChips: 增加数量必须为正数");
-            return;
-        }
+        if (amount == 0) return;
 
         currentChips += amount;
-        Debug.Log($"+{amount} 筹码，当前: {currentChips}");
-        OnChipsChanged?.Invoke(currentChips);
-    }
+        if (currentChips < 0) currentChips = 0;
 
-    /// <summary>
-    /// 减少筹码，返回是否成功（筹码不足时返回false）
-    /// </summary>
-    public bool SpendChips(int amount)
-    {
-        if (amount <= 0)
-        {
-            Debug.LogWarning("SpendChips: 消耗数量必须为正数");
-            return false;
-        }
-
-        if (currentChips < amount)
-        {
-            Debug.Log($"筹码不足！需要{amount}，当前只有{currentChips}");
-            return false;
-        }
-
-        currentChips -= amount;
-        Debug.Log($"-{amount} 筹码，当前: {currentChips}");
+        Debug.Log($"{(amount > 0 ? "+" : "")}{amount} 筹码，当前: {currentChips}");
         OnChipsChanged?.Invoke(currentChips);
 
-        // 检查是否归零，触发失败结算
         if (currentChips <= 0)
         {
-            currentChips = 0; // 防止负数
-            Debug.Log("筹码归零！触发失败结算。");
             OnBankrupt?.Invoke();
         }
-
-        return true;
     }
 
     /// <summary>
@@ -94,7 +65,6 @@ public class ChipsManager : MonoBehaviour
 
         if (currentChips <= 0)
         {
-            currentChips = 0;
             OnBankrupt?.Invoke();
         }
     }

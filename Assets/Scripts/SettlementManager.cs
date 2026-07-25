@@ -115,11 +115,8 @@ public class SettlementManager : MonoBehaviour
         }
         else if (chipChange < 0)
         {
-            bool success = chipsManager.SpendChips(-chipChange);
-            if (success)
-            {
-                Debug.Log($"预测失败！误差={error}，惩罚{chipChange}筹码");
-            }
+            chipsManager.AddChips(-chipChange);
+            Debug.Log($"预测失败！误差={error}，惩罚{chipChange}筹码");
         }
         else
         {
