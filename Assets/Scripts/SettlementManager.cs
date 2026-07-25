@@ -108,14 +108,13 @@ public class SettlementManager : MonoBehaviour
     /// </summary>
     private void ApplySettlement(int chipChange, int error, bool isEarly)
     {
+        chipsManager.AddChips(chipChange);
         if (chipChange > 0)
         {
-            chipsManager.AddChips(chipChange);
             Debug.Log($"完美成功！误差={error}，奖励+{chipChange}筹码");
         }
         else if (chipChange < 0)
         {
-            chipsManager.AddChips(-chipChange);
             Debug.Log($"预测失败！误差={error}，惩罚{chipChange}筹码");
         }
         else
