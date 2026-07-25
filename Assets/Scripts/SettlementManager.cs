@@ -27,15 +27,6 @@ public class SettlementManager : MonoBehaviour
             { 5, (-80, -100) } // 5+误差都按此处理
         };
 
-    void Awake()
-    {
-        if (chipsManager == null)
-            chipsManager = GetComponent<ChipsManager>();
-
-        if (chipsManager == null)
-            Debug.LogError("SettlementManager: 未找到ChipsManager组件！");
-    }
-
     /// <summary>
     /// 记录玩家最后一次猜测（修正时更新）
     /// </summary>

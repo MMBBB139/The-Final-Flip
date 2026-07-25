@@ -1,4 +1,3 @@
-// StrategyCardManager.cs
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -10,6 +9,7 @@ public class StrategyCardManager : MonoBehaviour
     [SerializeField] private TargetHandManager targetHandManager;
     [SerializeField] private SettlementManager settlementManager;
     [SerializeField] private CorrectionManager correctionManager;
+    [SerializeField] private RuleManager ruleManager;
 
     [Header("策略牌限制")]
     [SerializeField] private int maxCarryCards = 4;
@@ -33,12 +33,6 @@ public class StrategyCardManager : MonoBehaviour
 
     void Awake()
     {
-        if (deck == null) deck = GetComponent<Deck>();
-        if (chipsManager == null) chipsManager = GetComponent<ChipsManager>();
-        if (targetHandManager == null) targetHandManager = GetComponent<TargetHandManager>();
-        if (settlementManager == null) settlementManager = GetComponent<SettlementManager>();
-        if (correctionManager == null) correctionManager = GetComponent<CorrectionManager>();
-
         ownedCards = new List<StrategyCard>();
         allDefinitions = StrategyCardDefinitions.CreateAll();
 
@@ -151,6 +145,9 @@ public class StrategyCardManager : MonoBehaviour
             return false;
         }
 
+        if (ruleManager != null && !ruleManager.CanUseStrategyCard(cardName))
+            return false;
+
         if (!card.canUseCondition(this))
         {
             Debug.LogWarning($"[策略牌] {cardName}当前无法使用");
@@ -159,6 +156,9 @@ public class StrategyCardManager : MonoBehaviour
 
         card.executeEffect(this);
         card.usedThisRound = true;
+
+        if (ruleManager != null)
+            ruleManager.OnStrategyCardUsed();
 
         if (card.isOncePerGame)
         {
@@ -229,6 +229,7 @@ public class StrategyCardManager : MonoBehaviour
     public int ApplyAllInSettlement(int baseChange)
     {
         if (!allInMode) return baseChange;
+        allInMode = false;
         if (baseChange > 0) return baseChange * 3;
         if (baseChange < 0) return -chipsManager.GetChips();
         return 0;

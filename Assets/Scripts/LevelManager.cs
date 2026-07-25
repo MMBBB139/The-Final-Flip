@@ -24,10 +24,6 @@ public class LevelManager : MonoBehaviour
 
     void Awake()
     {
-        if (deck == null) deck = GetComponent<Deck>();
-        if (targetHandManager == null) targetHandManager = GetComponent<TargetHandManager>();
-        if (settlementManager == null) settlementManager = GetComponent<SettlementManager>();
-
         OnStageChanged ??= new UnityEvent<int, int>();
         OnGameCompleted ??= new UnityEvent();
         OnGameOver ??= new UnityEvent<string>();

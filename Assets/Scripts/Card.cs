@@ -1,4 +1,5 @@
 // Card.cs
+
 using System;
 
 [Serializable]
@@ -38,16 +39,19 @@ public class Card
     public Suit suit;
     public Rank rank;
     public CardColor color;
+    public bool isFaded;  // 新增：褪色牌标记（隐藏花色点数，但结算有效）
 
     public Card(Suit suit, Rank rank)
     {
         this.suit = suit;
         this.rank = rank;
         this.color = (suit == Suit.Hearts || suit == Suit.Diamonds) ? CardColor.Red : CardColor.Black;
+        this.isFaded = false;
     }
 
     public override string ToString()
     {
-        return $"{rank} of {suit} ({color})";
+        string fadedMark = isFaded ? "[褪色]" : "";
+        return $"{fadedMark}{rank} of {suit} ({color})";
     }
 }

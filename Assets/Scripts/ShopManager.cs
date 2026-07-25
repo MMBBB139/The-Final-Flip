@@ -20,12 +20,7 @@ public class ShopManager : MonoBehaviour
 
     void Awake()
     {
-        if (strategyCardManager == null) strategyCardManager = GetComponent<StrategyCardManager>();
-        if (chipsManager == null) chipsManager = GetComponent<ChipsManager>();
-
         currentShopItems = new List<StrategyCard>();
-
-        Debug.Log($"[商店] 初始化完成");
     }
 
     /// <summary>
