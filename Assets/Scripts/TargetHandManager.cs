@@ -5,13 +5,13 @@ using System.Linq;
 
 public class TargetHandManager : MonoBehaviour
 {
-    private List<TargetHand> allTargetHands;     // 所有36种牌型
-    private TargetHand currentTarget;            // 当前局目标
-    private List<string> usedTargets;            // 已用过的目标（避免重复）
+    private List<TargetHand> allTargetHands;         // 所有36种牌型
+    private TargetHand currentTarget;                // 当前局目标
+    private List<string> completedTargetNames;       // 已完成（结算）的目标名称，永久排除
 
     void Awake()
     {
-        usedTargets = new List<string>();
+        completedTargetNames = new List<string>();
         InitializeAllTargetHands();
     }
 
@@ -174,29 +174,23 @@ public class TargetHandManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 按层级随机选取一个目标（排除本层已用过的）
+    /// 按层级随机选取一个目标（排除已结算的）
     /// </summary>
     public TargetHand SelectRandomTarget(int tier)
     {
         TargetHand.Tier targetTier = (TargetHand.Tier)(tier - 1);
         List<TargetHand> availableTargets = allTargetHands
-            .Where(t => t.tier == targetTier && !usedTargets.Contains(t.handName))
+            .Where(t => t.tier == targetTier && !completedTargetNames.Contains(t.handName))
             .ToList();
 
         if (availableTargets.Count == 0)
         {
-            Debug.LogWarning($"第{tier}层所有目标已用完，重置该层已用记录");
-            // 重置该层已用记录
-            usedTargets.RemoveAll(name =>
-                allTargetHands.Any(t => t.handName == name && t.tier == targetTier));
-            availableTargets = allTargetHands
-                .Where(t => t.tier == targetTier)
-                .ToList();
+            Debug.LogWarning($"第{tier}层所有目标已完成结算，无可用目标");
+            return null;
         }
 
         int randomIndex = Random.Range(0, availableTargets.Count);
         currentTarget = availableTargets[randomIndex];
-        usedTargets.Add(currentTarget.handName);
 
         Debug.Log($"选取目标：{currentTarget.handName}（第{tier}层）");
         AnnounceTarget();
@@ -204,7 +198,7 @@ public class TargetHandManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 更换为同层级另一个随机目标（改目标底牌用）
+    /// 更换为同层级另一个随机目标（与当前目标不同，排除已结算的，但之前换掉的目标可能重新出现）
     /// </summary>
     public TargetHand ChangeTarget()
     {
@@ -216,56 +210,94 @@ public class TargetHandManager : MonoBehaviour
 
         List<TargetHand> availableTargets = allTargetHands
             .Where(t => t.tier == currentTarget.tier
-                && t.handName != currentTarget.handName
-                && !usedTargets.Contains(t.handName))
+                        && t.handName != currentTarget.handName
+                        && !completedTargetNames.Contains(t.handName))
             .ToList();
 
         if (availableTargets.Count == 0)
         {
-            availableTargets = allTargetHands
-                .Where(t => t.tier == currentTarget.tier
-                    && t.handName != currentTarget.handName)
-                .ToList();
+            Debug.LogWarning($"第{(int)currentTarget.tier + 1}层没有可替换的目标（其他目标均已结算）");
+            return null;
         }
 
         int randomIndex = Random.Range(0, availableTargets.Count);
-        usedTargets.Add(availableTargets[randomIndex].handName);
+        TargetHand oldTarget = currentTarget;
         currentTarget = availableTargets[randomIndex];
 
-        Debug.Log($"更换目标为：{currentTarget.handName}");
+        Debug.Log($"更换目标：{oldTarget.handName} → {currentTarget.handName}");
         AnnounceTarget();
         return currentTarget;
     }
 
     /// <summary>
-    /// 获取随机双重目标（用于双重目标底牌或第4层特殊规则）
+    /// 获取双重目标（第二个目标与第一个不同，且都不能是已结算的）
     /// </summary>
     public (TargetHand, TargetHand) GetDoubleTargets()
     {
-        if (currentTarget == null) return (null, null);
+        if (currentTarget == null)
+        {
+            Debug.LogWarning("无当前目标，无法获取双重目标");
+            return (null, null);
+        }
 
-        List<TargetHand> availableTargets = allTargetHands
+        List<TargetHand> availableForSecond = allTargetHands
             .Where(t => t.tier == currentTarget.tier
-                && t.handName != currentTarget.handName)
+                        && t.handName != currentTarget.handName
+                        && !completedTargetNames.Contains(t.handName))
             .ToList();
 
-        int randomIndex = Random.Range(0, availableTargets.Count);
-        TargetHand secondTarget = availableTargets[randomIndex];
+        if (availableForSecond.Count == 0)
+        {
+            Debug.LogWarning($"第{(int)currentTarget.tier + 1}层没有其他可用目标作为第二目标");
+            return (currentTarget, null);
+        }
+
+        int randomIndex = Random.Range(0, availableForSecond.Count);
+        TargetHand secondTarget = availableForSecond[randomIndex];
 
         Debug.Log($"双重目标：{currentTarget.handName} + {secondTarget.handName}");
         return (currentTarget, secondTarget);
     }
 
     /// <summary>
-    /// 公布当前目标
+    /// 标记当前目标为已完成（结算后调用，永久排除）
     /// </summary>
-    public void AnnounceTarget()
+    public void MarkCurrentTargetAsCompleted()
+    {
+        if (currentTarget == null)
+        {
+            Debug.LogWarning("无当前目标，无法标记完成");
+            return;
+        }
+
+        if (!completedTargetNames.Contains(currentTarget.handName))
+        {
+            completedTargetNames.Add(currentTarget.handName);
+            Debug.Log($"目标 [{currentTarget.handName}] 已完成结算，永久排除");
+        }
+    }
+
+    /// <summary>
+    /// 公布当前目标（支持双重目标）
+    /// </summary>
+    public void AnnounceTarget(TargetHand secondTarget = null)
     {
         if (currentTarget != null)
         {
             Debug.Log($"════════════════════════════════");
-            Debug.Log($"本局目标牌型：{currentTarget.handName}");
-            Debug.Log($"达成条件：{currentTarget.description}");
+
+            if (secondTarget != null)
+            {
+                Debug.Log($"本局为双重目标！");
+                Debug.Log($"目标一：{currentTarget.handName} - {currentTarget.description}");
+                Debug.Log($"目标二：{secondTarget.handName} - {secondTarget.description}");
+            }
+            else
+            {
+                Debug.Log($"本局目标牌型：{currentTarget.handName}");
+                Debug.Log($"达成条件：{currentTarget.description}");
+            }
+
             Debug.Log($"层级：第{(int)currentTarget.tier + 1}层");
             Debug.Log($"════════════════════════════════");
         }
@@ -289,11 +321,12 @@ public class TargetHandManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 清除所有已用记录（新游戏用）
+    /// 清除所有已完成记录（新游戏用）
     /// </summary>
-    public void ClearUsedTargets()
+    public void ClearCompletedTargets()
     {
-        usedTargets.Clear();
+        completedTargetNames.Clear();
         currentTarget = null;
+        Debug.Log("已清除所有完成记录");
     }
 }
