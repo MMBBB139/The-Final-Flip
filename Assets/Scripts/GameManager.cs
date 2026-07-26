@@ -208,21 +208,24 @@ public class GameManager : MonoBehaviour
         var (earlyVal, lateVal) = errorTable[errorKey];
         int chipChange = bestIsEarly ? earlyVal : lateVal;
 
+        // 1. 应用容错
         if (strategyCardManager.IsWithinTolerance(bestError))
         {
             chipChange = 0;
             OnGameMessage?.Invoke($"误差{bestError}在容错范围内，不扣不加");
         }
 
+        // 2. 应用结算倍率
         float multiplier = strategyCardManager.GetSettlementMultiplier();
         chipChange = Mathf.RoundToInt(chipChange * multiplier);
 
+        // 3. 应用全押
         chipChange = strategyCardManager.ApplyAllInSettlement(chipChange);
 
-        chipChange = ruleManager.ApplyPenaltyDouble(chipChange);
-
+        // 4. 应用亏损封顶
         chipChange = strategyCardManager.ApplyLossCap(chipChange);
 
+        // 5. 应用筹码变动
         chipsManager.AddChips(chipChange);
 
         string direction = chipChange >= 0 ? "+" : "";

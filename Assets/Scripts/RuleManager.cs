@@ -3,7 +3,7 @@ using System.Linq;
 using UnityEngine;
 
 /// <summary>
-/// 规则管理器 - 管理全局规则和特殊规则
+/// 规则管理器 - 仅管理4个特殊规则关（每层第3关）
 /// </summary>
 public class RuleManager : MonoBehaviour
 {
@@ -18,16 +18,11 @@ public class RuleManager : MonoBehaviour
     private int currentLayer;
     private bool isSpecialStage;
 
-    // 第3层全局规则状态
+    // 第3层特殊规则：褪色牌相关
     private bool nextCardIsFaded;
-
-    // 第3层特殊规则状态
     private bool observeCardsDisabled;
 
-    // 第4层全局规则状态
-    private bool settlementPenaltyDoubled;
-
-    // 第4层特殊规则状态
+    // 第4层特殊规则：双重目标相关
     private TargetHand secondTarget;
     private Card revealedCardForTarget1;
     private Card revealedCardForTarget2;
@@ -45,7 +40,6 @@ public class RuleManager : MonoBehaviour
         if (correctionManager != null)
         {
             correctionManager.OnCorrectionUsed.AddListener(OnCorrectionUsed);
-            correctionManager.OnNewGuess.AddListener(OnNewGuess);
         }
     }
 
@@ -54,45 +48,37 @@ public class RuleManager : MonoBehaviour
         if (correctionManager != null)
         {
             correctionManager.OnCorrectionUsed.RemoveListener(OnCorrectionUsed);
-            correctionManager.OnNewGuess.RemoveListener(OnNewGuess);
         }
     }
 
+    /// <summary>
+    /// 关卡开始时初始化规则
+    /// </summary>
     public void InitializeForStage(int layer, int stage)
     {
         currentLayer = layer;
         isSpecialStage = (stage == 3);
 
+        // 重置所有状态
         nextCardIsFaded = false;
         observeCardsDisabled = false;
-        settlementPenaltyDoubled = false;
         secondTarget = null;
         revealedCardForTarget1 = null;
         revealedCardForTarget2 = null;
 
-        Debug.Log($"[规则] 第{layer}层 第{stage}关 - 全局规则: {GetGlobalRuleDesc(layer)}, 特殊规则: {(isSpecialStage ? GetSpecialRuleDesc(layer) : "无")}");
-
-        if (layer >= 2)
+        if (isSpecialStage)
         {
-            deck.RandomRemoveConsecutive(3);
-            Debug.Log("[规则] 第2层全局规则：已随机移除连续3张牌");
+            Debug.Log($"[规则] 第{layer}层第{stage}关 - 特殊规则: {GetSpecialRuleDesc(layer)}");
+
+            // 第4层特殊规则：开局即设置双重目标
+            if (layer == 4)
+            {
+                ApplyDoubleTargetRule();
+            }
         }
-
-        if (isSpecialStage && layer == 4)
+        else
         {
-            ApplyDoubleTargetRule();
-        }
-    }
-
-    private string GetGlobalRuleDesc(int layer)
-    {
-        switch (layer)
-        {
-            case 1: return "无干扰，标准52张牌";
-            case 2: return "开局前随机移除连续3张牌";
-            case 3: return "使用策略牌后下一张为褪色牌";
-            case 4: return "修正后揭示一张牌，关键牌惩罚翻倍";
-            default: return "未知";
+            Debug.Log($"[规则] 第{layer}层第{stage}关 - 普通关，无特殊规则");
         }
     }
 
@@ -102,7 +88,7 @@ public class RuleManager : MonoBehaviour
         {
             case 1: return "使用修正后，已翻开最后3张洗回牌堆";
             case 2: return "修正窗口提前关闭（翻到N-3张时关闭）";
-            case 3: return "翻到褪色牌后禁用观察类策略牌";
+            case 3: return "使用策略牌后下一张为褪色牌；翻到褪色牌后禁用观察类策略牌";
             case 4: return "双重目标，两个都须达成，各揭示一张明牌";
             default: return "未知";
         }
@@ -110,6 +96,9 @@ public class RuleManager : MonoBehaviour
 
     // ==================== 策略牌使用回调 ====================
 
+    /// <summary>
+    /// 检查策略牌是否可用（第3层特殊规则：翻过褪色牌后禁用观察类）
+    /// </summary>
     public bool CanUseStrategyCard(string cardName)
     {
         if (isSpecialStage && currentLayer == 3 && observeCardsDisabled)
@@ -123,20 +112,26 @@ public class RuleManager : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// 策略牌使用后回调（第3层特殊规则：触发下一张褪色）
+    /// </summary>
     public void OnStrategyCardUsed()
     {
-        if (currentLayer >= 3)
+        if (isSpecialStage && currentLayer == 3)
         {
             nextCardIsFaded = true;
-            Debug.Log("[规则] 第3层全局规则：下一张翻开的牌将为褪色牌（隐藏花色点数）");
+            Debug.Log("[规则] 第3层特殊规则：使用策略牌后，下一张翻开的牌将为褪色牌");
         }
     }
 
     // ==================== 翻牌回调 ====================
 
+    /// <summary>
+    /// 是否需要抽褪色牌（第3层特殊规则）
+    /// </summary>
     public bool ShouldDrawFadedCard()
     {
-        if (nextCardIsFaded)
+        if (isSpecialStage && currentLayer == 3 && nextCardIsFaded)
         {
             nextCardIsFaded = false;
             return true;
@@ -144,6 +139,9 @@ public class RuleManager : MonoBehaviour
         return false;
     }
 
+    /// <summary>
+    /// 翻牌后回调（第3层特殊规则：翻到褪色牌后禁用观察类）
+    /// </summary>
     public void OnCardDrawn(bool wasFadedCard)
     {
         if (isSpecialStage && currentLayer == 3 && wasFadedCard && !observeCardsDisabled)
@@ -155,6 +153,9 @@ public class RuleManager : MonoBehaviour
 
     // ==================== 修正回调 ====================
 
+    /// <summary>
+    /// 修正使用后回调（第1层特殊规则：洗回最后3张已翻牌）
+    /// </summary>
     private void OnCorrectionUsed(int remainingCorrections, int cost)
     {
         if (isSpecialStage && currentLayer == 1)
@@ -164,64 +165,11 @@ public class RuleManager : MonoBehaviour
         }
     }
 
-    private void OnNewGuess(int newGuess)
-    {
-        if (currentLayer >= 4)
-        {
-            RevealCardAndCheckPenalty();
-        }
-    }
+    // ==================== 第2层特殊规则：修正窗口提前关闭 ====================
 
-    private void RevealCardAndCheckPenalty()
-    {
-        var remaining = deck.GetRemainingDeck();
-        if (remaining.Count == 0) return;
-
-        System.Random rng = new System.Random();
-        int randomIndex = rng.Next(remaining.Count);
-        Card revealedCard = remaining[randomIndex];
-
-        Debug.Log($"[规则] 第4层全局规则：揭示第{randomIndex + 1}张未翻牌 - {revealedCard}");
-
-        if (IsCardKeyToTarget(revealedCard))
-        {
-            settlementPenaltyDoubled = true;
-            Debug.Log($"[规则] 揭示的牌 {revealedCard} 是目标达成的关键牌！本次结算惩罚将翻倍！");
-        }
-    }
-
-    private bool IsCardKeyToTarget(Card card)
-    {
-        var drawnCards = deck.GetDrawnCards();
-        var currentTarget = targetHandManager.GetCurrentTarget();
-        if (currentTarget == null) return false;
-
-        bool currentlyAchieved = currentTarget.checkCondition(drawnCards);
-        if (currentlyAchieved) return false;
-
-        var simulatedCards = new List<Card>(drawnCards) { card };
-        bool wouldAchieve = currentTarget.checkCondition(simulatedCards);
-
-        if (wouldAchieve)
-        {
-            var remaining = deck.GetRemainingDeck();
-            var otherCards = remaining.Where(c => c != card).Take(5);
-            foreach (var otherCard in otherCards)
-            {
-                var altSimulation = new List<Card>(drawnCards) { otherCard };
-                if (currentTarget.checkCondition(altSimulation))
-                {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        return false;
-    }
-
-    // ==================== 第2层特殊规则 ====================
-
+    /// <summary>
+    /// 获取修正窗口偏移量（第2层特殊规则：提前3张关闭）
+    /// </summary>
     public int GetCorrectionWindowOffset()
     {
         if (isSpecialStage && currentLayer == 2)
@@ -256,6 +204,7 @@ public class RuleManager : MonoBehaviour
         Card bestCard = null;
         int bestPosition = -1;
 
+        // 优先找一张能帮助达成目标的牌
         foreach (var card in remaining.Select((c, i) => new { Card = c, Index = i }))
         {
             var simulated = new List<Card>(drawnCards) { card.Card };
@@ -267,6 +216,7 @@ public class RuleManager : MonoBehaviour
             }
         }
 
+        // 如果找不到关键牌，随机选一张
         if (bestCard == null && remaining.Count > 0)
         {
             System.Random rng = new System.Random();
@@ -284,6 +234,9 @@ public class RuleManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 检查双重目标是否都已达成（第4层特殊规则）
+    /// </summary>
     public bool CheckDoubleTargetsAchieved(List<Card> drawnCards)
     {
         if (!isSpecialStage || currentLayer != 4 || secondTarget == null)
@@ -296,45 +249,19 @@ public class RuleManager : MonoBehaviour
         return primaryAchieved && secondaryAchieved;
     }
 
-    public TargetHand GetSecondTarget()
-    {
-        return secondTarget;
-    }
-
-    // ==================== 结算相关 ====================
-
-    public bool IsSettlementPenaltyDoubled()
-    {
-        if (currentLayer >= 4 && settlementPenaltyDoubled)
-        {
-            settlementPenaltyDoubled = false;
-            return true;
-        }
-        return false;
-    }
-
-    public int ApplyPenaltyDouble(int chipChange)
-    {
-        if (chipChange < 0 && IsSettlementPenaltyDoubled())
-        {
-            int doubled = chipChange * 2;
-            Debug.Log($"[规则] 第4层全局规则：关键牌惩罚翻倍！{chipChange} → {doubled}");
-            return doubled;
-        }
-        return chipChange;
-    }
+    public TargetHand GetSecondTarget() => secondTarget;
 
     // ==================== 状态查询 ====================
+
+    public bool IsSpecialStage() => isSpecialStage;
+    public int GetCurrentLayer() => currentLayer;
 
     public bool IsDoubleTargetMode()
     {
         return isSpecialStage && currentLayer == 4 && secondTarget != null;
     }
 
-    public bool IsObserveCardsDisabled()
-    {
-        return observeCardsDisabled;
-    }
+    public bool IsObserveCardsDisabled() => observeCardsDisabled;
 
     public (Card card, int position) GetRevealedHintForTarget1()
     {
@@ -346,11 +273,13 @@ public class RuleManager : MonoBehaviour
         return (revealedCardForTarget2, revealedCardPosition2);
     }
 
+    /// <summary>
+    /// 重置所有规则状态
+    /// </summary>
     public void ResetAll()
     {
         nextCardIsFaded = false;
         observeCardsDisabled = false;
-        settlementPenaltyDoubled = false;
         secondTarget = null;
         revealedCardForTarget1 = null;
         revealedCardForTarget2 = null;
