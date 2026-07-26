@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eb2dc5c458ea9ef4fb5c292759b85323, type: 3}
+  m_Name: GameConfig
+  m_EditorClassIdentifier: Assembly-CSharp::GameConfigSO
+  initialChips: 200
+  maxCorrectionsPerRound: 1
+  correctionCost: 20
+  shopSlotCount: 3
+  refreshCost: 20
+  maxCarryCards: 4
+  layer1ReturnCardCount: 3
+  layer2CorrectionWindowOffset: 3
+  errorTable:
+  - error: 0
+    early: 60
+    late: 60
+  - error: 1
+    early: 30
+    late: 20
+  - error: 2
+    early: -20
+    late: -40
+  - error: 3
+    early: -40
+    late: -60
+  - error: 4
+    early: -60
+    late: -80
+  - error: 5
+    early: -80
+    late: -100

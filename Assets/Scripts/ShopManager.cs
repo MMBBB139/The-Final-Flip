@@ -1,248 +1,116 @@
-// ShopManager.cs
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-/// <summary>
-/// 商店系统 - 管理策略牌的展示、刷新、购买、升级
-/// </summary>
 public class ShopManager : MonoBehaviour
 {
-    [Header("依赖组件")]
+    [SerializeField] private GameConfigSO config;
     [SerializeField] private StrategyCardManager strategyCardManager;
     [SerializeField] private ChipsManager chipsManager;
 
-    [Header("商店参数")]
-    [SerializeField] private int shopSlotCount = 3;
-    [SerializeField] private int refreshCost = 20;
+    private List<StrategyCard> currentShopItems = new List<StrategyCard>();
 
-    private List<StrategyCard> currentShopItems;           // 当前展示的3张牌（来自定义库的引用）
-
-    void Awake()
-    {
-        currentShopItems = new List<StrategyCard>();
-    }
-
-    /// <summary>
-    /// 新关卡开始时刷新商店
-    /// </summary>
     public void RefreshShopForNewStage()
     {
-        GenerateNewShopItems(excludeNames: null);
+        GenerateNewShopItems(null);
     }
 
-    /// <summary>
-    /// 刷新商店（消耗20筹码），新商品与当前展示的不同
-    /// </summary>
     public bool RefreshShop()
     {
-        int currentChips = chipsManager != null ? chipsManager.GetChips() : 0;
-        if (currentChips < refreshCost)
+        int cost = config != null ? config.refreshCost : 20;
+        if (chipsManager.GetChips() < cost)
         {
-            Debug.LogWarning($"[商店] 筹码不足！刷新需要{refreshCost}筹码，当前仅有{currentChips}筹码");
+            Debug.LogWarning($"刷新需要{cost}筹码");
             return false;
         }
-
-        chipsManager.AddChips(-refreshCost);
-
-        // 排除当前展示的牌名
-        var excludeNames = currentShopItems.Select(item => item.cardName).ToList();
-        GenerateNewShopItems(excludeNames);
-        Debug.Log($"[商店] 刷新完成，消耗{refreshCost}筹码");
+        chipsManager.AddChips(-cost);
+        GenerateNewShopItems(currentShopItems.Select(c => c.cardName).ToList());
+        Debug.Log($"刷新商店，消耗{cost}");
         return true;
     }
 
-    /// <summary>
-    /// 生成3张新的商店商品
-    /// </summary>
-    /// <param name="excludeNames">需要排除的牌名列表（刷新时排除当前展示的）</param>
     private void GenerateNewShopItems(List<string> excludeNames)
     {
         currentShopItems.Clear();
-
-        var ownedCards = strategyCardManager.GetOwnedCards();
+        var owned = strategyCardManager.GetOwnedCards();
         var allDefs = strategyCardManager.GetAllDefinitions();
 
-        // 筛选可用牌：排除无用牌 + 排除指定名称
-        List<StrategyCard> availableDefs = allDefs
-            .Where(def => IsCardUseful(def, ownedCards))
-            .Where(def => excludeNames == null || !excludeNames.Contains(def.cardName))
+        var available = allDefs
+            .Where(d => IsCardUseful(d, owned))
+            .Where(d => excludeNames == null || !excludeNames.Contains(d.cardName))
             .ToList();
 
-        // 如果排除后不够3张，放宽限制（允许重复出现）
-        if (availableDefs.Count < shopSlotCount)
+        int slotCount = config != null ? config.shopSlotCount : 3;
+        if (available.Count < slotCount)
         {
-            Debug.Log($"[商店] 排除后可用牌仅{availableDefs.Count}种，放宽限制");
-            availableDefs = allDefs
-                .Where(def => IsCardUseful(def, ownedCards))
-                .ToList();
+            available = allDefs.Where(d => IsCardUseful(d, owned)).ToList();
         }
 
-        // 随机选取3张
         System.Random rng = new System.Random();
-        List<StrategyCard> shuffled = availableDefs.OrderBy(_ => rng.Next()).ToList();
-        int count = Mathf.Min(shopSlotCount, shuffled.Count);
-        currentShopItems = shuffled.Take(count).ToList();
-
-        if (currentShopItems.Count < shopSlotCount)
-            Debug.LogWarning($"[商店] 仅生成{currentShopItems.Count}张商品（可用牌不足）");
+        int count = Mathf.Min(slotCount, available.Count);
+        currentShopItems = available.OrderBy(_ => rng.Next()).Take(count).ToList();
     }
 
-    /// <summary>
-    /// 判断一张牌是否"有用"：
-    /// - 未拥有 → 有用
-    /// - 已拥有且可升级 → 有用
-    /// - 已拥有且满级 → 无用
-    /// </summary>
-    private bool IsCardUseful(StrategyCard definition, List<StrategyCard> ownedCards)
+    private bool IsCardUseful(StrategyCard def, List<StrategyCard> owned)
     {
-        var owned = ownedCards.Find(c => c.cardName == definition.cardName);
-        if (owned == null) return true;
-        return owned.IsUpgradable;
+        var own = owned.Find(c => c.cardName == def.cardName);
+        return own == null || own.IsUpgradable;
     }
 
-    /// <summary>
-    /// 购买商店中的牌
-    /// </summary>
     public bool BuyCard(int slotIndex)
     {
-        if (slotIndex < 0 || slotIndex >= currentShopItems.Count)
-        {
-            Debug.LogWarning($"[商店] 无效槽位: {slotIndex}");
-            return false;
-        }
-
+        if (slotIndex < 0 || slotIndex >= currentShopItems.Count) return false;
         var item = currentShopItems[slotIndex];
-        string cardName = item.cardName;
-
-        var ownedCards = strategyCardManager.GetOwnedCards();
-        var owned = ownedCards.Find(c => c.cardName == cardName);
-
+        var owned = strategyCardManager.GetOwnedCards().Find(c => c.cardName == item.cardName);
         if (owned != null)
-        {
-            return UpgradeCardInShop(cardName);
-        }
+            return UpgradeCard(item.cardName);
         else
-        {
-            return PurchaseNewCard(cardName, item.price);
-        }
+            return PurchaseNewCard(item.cardName, item.price);
     }
 
     /// <summary>
-    /// 购买新牌
-    /// </summary>
-    private bool PurchaseNewCard(string cardName, int price)
-    {
-        int currentChips = chipsManager != null ? chipsManager.GetChips() : 0;
-        if (currentChips < price)
-        {
-            Debug.LogWarning($"[商店] 筹码不足！购买{cardName}需要{price}筹码，当前仅有{currentChips}");
-            return false;
-        }
-
-        var ownedCards = strategyCardManager.GetOwnedCards();
-        if (ownedCards.Count >= 4)
-        {
-            Debug.LogWarning($"[商店] 策略牌已满（最多4张），请先卖出");
-            return false;
-        }
-
-        chipsManager.AddChips(-price);
-        bool success = strategyCardManager.AddCard(cardName);
-
-        if (success)
-        {
-            Debug.Log($"[商店] 购买成功: {cardName}，消耗{price}筹码");
-            RemoveShopItem(cardName);
-        }
-
-        return success;
-    }
-
-    /// <summary>
-    /// 升级已拥有的牌
-    /// </summary>
-    private bool UpgradeCardInShop(string cardName)
-    {
-        var ownedCards = strategyCardManager.GetOwnedCards();
-        var owned = ownedCards.Find(c => c.cardName == cardName);
-
-        if (owned == null || !owned.IsUpgradable)
-        {
-            Debug.LogWarning($"[商店] {cardName}无法升级");
-            return false;
-        }
-
-        int upgradeCost = owned.GetUpgradeCost();
-        int currentChips = chipsManager != null ? chipsManager.GetChips() : 0;
-        if (currentChips < upgradeCost)
-        {
-            Debug.LogWarning($"[商店] 筹码不足！升级需要{upgradeCost}筹码");
-            return false;
-        }
-
-        bool success = strategyCardManager.UpgradeCard(cardName);
-        if (success)
-        {
-            ownedCards = strategyCardManager.GetOwnedCards();
-            var updated = ownedCards.Find(c => c.cardName == cardName);
-            if (updated != null && !updated.IsUpgradable)
-            {
-                RemoveShopItem(cardName);
-                Debug.Log($"[商店] {cardName}已满级，从商店移除");
-            }
-        }
-
-        return success;
-    }
-
-    /// <summary>
-    /// 卖出已拥有的牌（回收50%筹码）
+    /// 卖出已拥有的策略牌
     /// </summary>
     public bool SellCard(string cardName)
     {
-        var ownedCards = strategyCardManager.GetOwnedCards();
-        var owned = ownedCards.Find(c => c.cardName == cardName);
+        return strategyCardManager.SellCard(cardName);
+    }
 
-        if (owned == null)
+    private bool PurchaseNewCard(string name, int price)
+    {
+        if (chipsManager.GetChips() < price) return false;
+        int maxCarry = config != null ? config.maxCarryCards : 4;
+        if (strategyCardManager.GetOwnedCards().Count >= maxCarry)
         {
-            Debug.LogWarning($"[商店] 未拥有{cardName}，无法卖出");
+            Debug.LogWarning("策略牌已满");
             return false;
         }
-
-        int sellPrice = owned.GetSellPrice();
-        bool success = strategyCardManager.SellCard(cardName);
-
-        if (success)
+        chipsManager.AddChips(-price);
+        if (strategyCardManager.AddCard(name))
         {
-            Debug.Log($"[商店] 卖出成功: {cardName}，回收{sellPrice}筹码");
+            RemoveShopItem(name);
+            return true;
         }
-
-        return success;
+        return false;
     }
 
-    /// <summary>
-    /// 从当前展示中移除指定牌
-    /// </summary>
-    private void RemoveShopItem(string cardName)
+    private bool UpgradeCard(string name)
     {
-        var item = currentShopItems.Find(i => i.cardName == cardName);
-        if (item != null)
+        var owned = strategyCardManager.GetOwnedCards().Find(c => c.cardName == name);
+        if (owned == null || !owned.IsUpgradable) return false;
+        int cost = owned.GetUpgradeCost();
+        if (chipsManager.GetChips() < cost) return false;
+        if (strategyCardManager.UpgradeCard(name))
         {
-            currentShopItems.Remove(item);
+            var updated = strategyCardManager.GetOwnedCards().Find(c => c.cardName == name);
+            if (updated != null && !updated.IsUpgradable)
+                RemoveShopItem(name);
+            return true;
         }
+        return false;
     }
 
-    /// <summary>
-    /// 获取当前商店商品列表
-    /// </summary>
-    public List<StrategyCard> GetCurrentShopItems()
-    {
-        return new List<StrategyCard>(currentShopItems);
-    }
+    private void RemoveShopItem(string name) => currentShopItems.RemoveAll(c => c.cardName == name);
 
-    /// <summary>
-    /// 获取刷新费用
-    /// </summary>
-    public int GetRefreshCost() => refreshCost;
+    public List<StrategyCard> GetCurrentShopItems() => new List<StrategyCard>(currentShopItems);
 }

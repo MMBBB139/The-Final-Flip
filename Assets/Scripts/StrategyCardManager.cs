@@ -3,7 +3,8 @@ using UnityEngine;
 
 public class StrategyCardManager : MonoBehaviour
 {
-    [Header("依赖组件")]
+    [SerializeField] private StrategyCardDataSO cardDatabase;
+    [SerializeField] private GameConfigSO config;
     [SerializeField] private Deck deck;
     [SerializeField] private ChipsManager chipsManager;
     [SerializeField] private TargetHandManager targetHandManager;
@@ -11,218 +12,129 @@ public class StrategyCardManager : MonoBehaviour
     [SerializeField] private CorrectionManager correctionManager;
     [SerializeField] private RuleManager ruleManager;
 
-    [Header("策略牌限制")]
-    [SerializeField] private int maxCarryCards = 4;
-
-    private List<StrategyCard> ownedCards;
+    private List<StrategyCard> ownedCards = new List<StrategyCard>();
     private List<StrategyCard> allDefinitions;
+    private StrategyCardData[] allData;
 
-    private float settlementMultiplier = 1.0f;
+    private float settlementMultiplier = 1f;
     private int errorTolerance = 0;
     private int lossCap = int.MaxValue;
-    private bool deathSaveActive = false;
-    private bool allInMode = false;
-    private bool keepPreviousGuess = false;
-    private int previousGuessN = 0;
+    private bool deathSave;
+    private bool allInMode;
+    private bool keepPreviousGuess;
+    private int previousGuessN;
 
     public Deck Deck => deck;
     public ChipsManager ChipsManager => chipsManager;
     public TargetHandManager TargetHandManager => targetHandManager;
-    public SettlementManager SettlementManager => settlementManager;
     public CorrectionManager CorrectionManager => correctionManager;
 
     void Awake()
     {
-        ownedCards = new List<StrategyCard>();
-        allDefinitions = StrategyCardDefinitions.CreateAll();
+        if (cardDatabase != null)
+            allData = cardDatabase.cards;
+        else
+            allData = new StrategyCardData[0];
+
+        allDefinitions = StrategyCardDefinitions.CreateAll(allData);
 
         if (chipsManager != null)
             chipsManager.OnChipsChanged.AddListener(OnChipsChanged);
-
         if (correctionManager != null)
             correctionManager.OnNewGuess.AddListener(OnBeforeCorrection);
     }
 
+    /// <summary>
+    /// 通过名称获取策略牌的数据定义
+    /// </summary>
+    public StrategyCardData GetCardData(string cardName)
+    {
+        foreach (var data in allData)
+        {
+            if (data.cardName == cardName)
+                return data;
+        }
+        return null;
+    }
+
     public bool AddCard(string cardName)
     {
-        if (ownedCards.Count >= maxCarryCards)
-        {
-            Debug.LogWarning($"[策略牌] 已达最大携带数量{maxCarryCards}");
+        if (ownedCards.Count >= (config != null ? config.maxCarryCards : 4))
             return false;
-        }
 
         var existing = ownedCards.Find(c => c.cardName == cardName);
         if (existing != null)
-        {
-            if (existing.IsUpgradable)
-                return UpgradeCard(cardName);
-            Debug.LogWarning($"[策略牌] 已拥有{cardName}且已满级");
-            return false;
-        }
+            return existing.IsUpgradable && UpgradeCard(cardName);
 
-        var definition = allDefinitions.Find(c => c.cardName == cardName);
-        if (definition == null)
-        {
-            Debug.LogError($"[策略牌] 未找到定义: {cardName}");
-            return false;
-        }
+        var def = allDefinitions.Find(c => c.cardName == cardName);
+        if (def == null) return false;
 
-        var newCard = new StrategyCard(
-            definition.cardName,
-            definition.description,
-            definition.price,
-            definition.maxLevel,
-            definition.executeEffect,
-            definition.canUseCondition
-        )
-        {
-            upgradePrice = definition.upgradePrice,
-            isOncePerGame = definition.isOncePerGame
-        };
+        var data = GetCardData(cardName);
+        if (data == null) return false;
 
+        var newCard = new StrategyCard(data, def.executeEffect, def.canUseCondition);
         ownedCards.Add(newCard);
-        Debug.Log($"[策略牌] 获得: {cardName}");
-        return true;
-    }
-
-    public bool SellCard(string cardName)
-    {
-        var card = ownedCards.Find(c => c.cardName == cardName);
-        if (card == null)
-        {
-            Debug.LogWarning($"[策略牌] 未拥有: {cardName}");
-            return false;
-        }
-
-        int sellPrice = card.GetSellPrice();
-        ownedCards.Remove(card);
-        chipsManager?.AddChips(sellPrice);
-        Debug.Log($"[策略牌] 卖出{cardName}，回收{sellPrice}筹码");
+        Debug.Log($"获得策略牌: {cardName}");
         return true;
     }
 
     public bool UpgradeCard(string cardName)
     {
         var card = ownedCards.Find(c => c.cardName == cardName);
-        if (card == null)
-        {
-            Debug.LogWarning($"[策略牌] 未拥有: {cardName}");
-            return false;
-        }
-
-        if (!card.IsUpgradable)
-        {
-            Debug.LogWarning($"[策略牌] {cardName}已满级或不可升级");
-            return false;
-        }
-
+        if (card == null || !card.IsUpgradable) return false;
         int cost = card.GetUpgradeCost();
-        int currentChips = chipsManager != null ? chipsManager.GetChips() : 0;
-        if (currentChips < cost)
-        {
-            Debug.LogWarning($"[策略牌] 筹码不足，升级需要{cost}");
-            return false;
-        }
-
-        chipsManager?.AddChips(-cost);
+        if (chipsManager.GetChips() < cost) return false;
+        chipsManager.AddChips(-cost);
         card.Upgrade();
-        Debug.Log($"[策略牌] {cardName}升级到Lv.{card.currentLevel}，消耗{cost}筹码");
+        Debug.Log($"{cardName}升级至Lv.{card.currentLevel}");
+        return true;
+    }
+
+    public bool SellCard(string cardName)
+    {
+        var card = ownedCards.Find(c => c.cardName == cardName);
+        if (card == null) return false;
+        int sellPrice = card.GetSellPrice();
+        ownedCards.Remove(card);
+        chipsManager.AddChips(sellPrice);
+        Debug.Log($"卖出{cardName}，回收{sellPrice}筹码");
         return true;
     }
 
     public bool UseCard(string cardName)
     {
         var card = ownedCards.Find(c => c.cardName == cardName);
-        if (card == null)
-        {
-            Debug.LogWarning($"[策略牌] 未拥有: {cardName}");
-            return false;
-        }
-
-        if (!card.IsAvailableThisRound())
-        {
-            Debug.LogWarning($"[策略牌] {cardName}本局不可用");
-            return false;
-        }
-
-        if (ruleManager != null && !ruleManager.CanUseStrategyCard(cardName))
-            return false;
-
-        if (!card.canUseCondition(this))
-        {
-            Debug.LogWarning($"[策略牌] {cardName}当前无法使用");
-            return false;
-        }
+        if (card == null || !card.IsAvailableThisRound()) return false;
+        if (ruleManager != null && !ruleManager.CanUseStrategyCard(cardName)) return false;
+        if (!card.canUseCondition(this)) return false;
 
         card.executeEffect(this);
         card.usedThisRound = true;
-
-        if (ruleManager != null)
-            ruleManager.OnStrategyCardUsed();
+        ruleManager?.OnStrategyCardUsed();
 
         if (card.isOncePerGame)
         {
             card.usedThisGame = true;
             ownedCards.Remove(card);
-            Debug.Log($"[策略牌] {cardName}已使用并消失");
         }
-
         return true;
     }
 
-    public void ResetAllForNewStage()
-    {
-        foreach (var card in ownedCards)
-            card.usedThisRound = false;
+    public int GetCardLevel(string name) => ownedCards.Find(c => c.cardName == name)?.currentLevel ?? 1;
 
-        settlementMultiplier = 1.0f;
-        errorTolerance = 0;
-        lossCap = int.MaxValue;
-        deathSaveActive = false;
-        allInMode = false;
-        keepPreviousGuess = false;
-        previousGuessN = 0;
-
-        Debug.Log("[策略牌] 本局状态已重置");
-    }
-
-    public void ResetAllForNewGame()
-    {
-        ownedCards.Clear();
-        ResetAllForNewStage();
-        Debug.Log("[策略牌] 全部重置");
-    }
-
-    public int GetCardLevel(string cardName)
-    {
-        return ownedCards.Find(c => c.cardName == cardName)?.currentLevel ?? 1;
-    }
-
-    public List<StrategyCard> GetOwnedCards()
-    {
-        return new List<StrategyCard>(ownedCards);
-    }
-
-    public List<StrategyCard> GetAllDefinitions()
-    {
-        return new List<StrategyCard>(allDefinitions);
-    }
+    public List<StrategyCard> GetOwnedCards() => new List<StrategyCard>(ownedCards);
+    public List<StrategyCard> GetAllDefinitions() => allDefinitions;
 
     public void SetSettlementMultiplier(float m) => settlementMultiplier = m;
     public float GetSettlementMultiplier() => settlementMultiplier;
-
     public void SetErrorTolerance(int t) => errorTolerance = t;
-    public int GetErrorTolerance() => errorTolerance;
-
+    public bool IsWithinTolerance(int error) => error <= errorTolerance;
     public void SetLossCap(int cap) => lossCap = cap;
     public int GetLossCap() => lossCap;
-
-    public void SetDeathSave(bool active) => deathSaveActive = active;
-
-    public void SetAllInMode(bool active) => allInMode = active;
+    public void SetDeathSave(bool v) => deathSave = v;
+    public void SetAllInMode(bool v) => allInMode = v;
     public bool IsAllInMode() => allInMode;
-
-    public void SetKeepPreviousGuess(bool active) => keepPreviousGuess = active;
+    public void SetKeepPreviousGuess(bool v) => keepPreviousGuess = v;
     public bool IsKeepPreviousGuess() => keepPreviousGuess;
     public int GetPreviousGuess() => previousGuessN;
 
@@ -230,42 +142,41 @@ public class StrategyCardManager : MonoBehaviour
     {
         if (!allInMode) return baseChange;
         allInMode = false;
-        if (baseChange > 0) return baseChange * 3;
-        if (baseChange < 0) return -chipsManager.GetChips();
-        return 0;
+        return baseChange > 0 ? baseChange * 3 : -chipsManager.GetChips();
     }
 
-    public int ApplyLossCap(int chipChange)
+    public int ApplyLossCap(int change) => change < -lossCap ? -lossCap : change;
+
+    public void ResetAllForNewStage()
     {
-        if (chipChange < -lossCap)
-        {
-            Debug.Log($"[亏损封顶] 损失从{chipChange}限制为{-lossCap}");
-            return -lossCap;
-        }
-        return chipChange;
+        foreach (var c in ownedCards) c.usedThisRound = false;
+        settlementMultiplier = 1f;
+        errorTolerance = 0;
+        lossCap = int.MaxValue;
+        deathSave = false;
+        allInMode = false;
+        keepPreviousGuess = false;
     }
 
-    public bool IsWithinTolerance(int error)
+    public void ResetAllForNewGame()
     {
-        return error <= errorTolerance;
+        ownedCards.Clear();
+        ResetAllForNewStage();
     }
 
     private void OnChipsChanged(int newChips)
     {
-        if (deathSaveActive && newChips <= 0)
+        if (deathSave && newChips <= 0)
         {
             chipsManager.SetChips(1);
-            deathSaveActive = false;
-            Debug.Log("[免死] 触发！筹码保留为1");
+            deathSave = false;
+            Debug.Log("[免死] 触发，筹码保留1");
         }
     }
 
     private void OnBeforeCorrection(int newGuess)
     {
         if (keepPreviousGuess)
-        {
             previousGuessN = correctionManager.GetLastGuess();
-            Debug.Log($"[保留猜测] 保留修正前猜测: {previousGuessN}");
-        }
     }
 }

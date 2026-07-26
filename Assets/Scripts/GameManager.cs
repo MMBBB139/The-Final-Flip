@@ -194,19 +194,9 @@ public class GameManager : MonoBehaviour
             }
         }
 
-        int errorKey = Mathf.Min(bestError, 5);
-        var errorTable = new Dictionary<int, (int early, int late)>
-        {
-            { 0, (60, 60) },
-            { 1, (30, 20) },
-            { 2, (-20, -40) },
-            { 3, (-40, -60) },
-            { 4, (-60, -80) },
-            { 5, (-80, -100) }
-        };
-
-        var (earlyVal, lateVal) = errorTable[errorKey];
-        int chipChange = bestIsEarly ? earlyVal : lateVal;
+        int chipChange = settlementManager.config != null
+            ? settlementManager.config.GetChipChange(bestError, bestIsEarly)
+            : 0;
 
         // 1. 应用容错
         if (strategyCardManager.IsWithinTolerance(bestError))
@@ -279,7 +269,7 @@ public class GameManager : MonoBehaviour
     public bool SellStrategyCard(string cardName)
     {
         if (isGameOver) return false;
-        return shopManager.SellCard(cardName);
+        return strategyCardManager.SellCard(cardName);
     }
 
     public bool RefreshShop()

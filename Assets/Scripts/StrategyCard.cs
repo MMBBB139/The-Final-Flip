@@ -1,5 +1,5 @@
-// StrategyCard.cs
 using System;
+using UnityEngine;
 
 [Serializable]
 public class StrategyCard
@@ -11,48 +11,45 @@ public class StrategyCard
     public int maxLevel;
     public int currentLevel;
     public bool isOncePerGame;
+    public bool isObservable;
     public bool usedThisRound;
     public bool usedThisGame;
+
+    // 效果仍由代码实现，但通过管理器触发
     public Action<StrategyCardManager> executeEffect;
     public Func<StrategyCardManager, bool> canUseCondition;
 
-    public StrategyCard(string name, string desc, int price, int maxLevel,
-        Action<StrategyCardManager> effect, Func<StrategyCardManager, bool> condition = null)
+    public StrategyCard(StrategyCardData data, Action<StrategyCardManager> effect, Func<StrategyCardManager, bool> condition = null)
     {
-        cardName = name;
-        description = desc;
-        this.price = price;
-        this.maxLevel = maxLevel;
-        this.currentLevel = 1;
-        this.upgradePrice = 0;
-        this.isOncePerGame = false;
-        this.usedThisRound = false;
-        this.usedThisGame = false;
-        this.executeEffect = effect;
-        this.canUseCondition = condition ?? (ctx => true);
+        cardName = data.cardName;
+        description = data.description;
+        price = data.price;
+        maxLevel = data.maxLevel;
+        upgradePrice = data.upgradePrice;
+        isOncePerGame = data.isOncePerGame;
+        isObservable = data.isObservable;
+        currentLevel = 1;
+        usedThisRound = false;
+        usedThisGame = false;
+        executeEffect = effect;
+        canUseCondition = condition ?? (ctx => true);
     }
 
     public bool IsUpgradable => maxLevel > 1 && currentLevel < maxLevel;
 
-    public int GetUpgradeCost()
-    {
-        if (currentLevel >= maxLevel) return -1;
-        return upgradePrice;
-    }
+    public int GetUpgradeCost() => currentLevel >= maxLevel ? -1 : upgradePrice;
 
     public int GetSellPrice()
     {
-        int totalInvested = price;
-        for (int i = 1; i < currentLevel; i++)
-            totalInvested += upgradePrice;
-        return totalInvested / 2;
+        int total = price;
+        for (int i = 1; i < currentLevel; i++) total += upgradePrice;
+        return total / 2;
     }
 
     public bool IsAvailableThisRound()
     {
         if (isOncePerGame && usedThisGame) return false;
-        if (usedThisRound) return false;
-        return true;
+        return !usedThisRound;
     }
 
     public bool Upgrade()
