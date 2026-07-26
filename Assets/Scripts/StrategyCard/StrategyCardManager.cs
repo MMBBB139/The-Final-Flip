@@ -41,12 +41,9 @@ public class StrategyCardManager : MonoBehaviour
         if (chipsManager != null)
             chipsManager.OnChipsChanged.AddListener(OnChipsChanged);
         if (correctionManager != null)
-            correctionManager.OnNewGuess.AddListener(OnBeforeCorrection);
+            correctionManager.OnBeforeGuessChanged.AddListener(OnBeforeGuessChanged);
     }
 
-    /// <summary>
-    /// 通过名称获取策略牌的数据定义
-    /// </summary>
     public StrategyCardData GetCardData(string cardName)
     {
         foreach (var data in allData)
@@ -174,9 +171,12 @@ public class StrategyCardManager : MonoBehaviour
         }
     }
 
-    private void OnBeforeCorrection(int newGuess)
+    private void OnBeforeGuessChanged(int oldGuess)
     {
         if (keepPreviousGuess)
-            previousGuessN = correctionManager.GetLastGuess();
+        {
+            previousGuessN = oldGuess;
+            Debug.Log($"[保留猜测] 保存修正前猜测: {previousGuessN}");
+        }
     }
 }

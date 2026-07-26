@@ -1,8 +1,12 @@
 using UnityEngine;
 
+/// <summary>
+/// 结算管理器 - 根据玩家猜测和实际达成张数计算筹码变动。
+/// 仅负责基础误差结算（查表得出筹码变化），倍率、容错、全押等额外结算效果由 StrategyCardManager 和 GameManager 处理。
+/// </summary>
 public class SettlementManager : MonoBehaviour
 {
-    public GameConfigSO config;   // 改为 public，方便 GameManager 访问
+    public GameConfigSO config;
     [SerializeField] private ChipsManager chipsManager;
 
     private int lastGuessN;

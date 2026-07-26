@@ -221,6 +221,14 @@ public class GameManager : MonoBehaviour
         string direction = chipChange >= 0 ? "+" : "";
         OnGameMessage?.Invoke($"结算：猜测N={lastGuess}，实际{achievedAtCardCount}张，误差{bestError}，筹码{direction}{chipChange}");
 
+        // 双重目标模式下，标记副目标完成
+        if (ruleManager.IsDoubleTargetMode())
+        {
+            var secondTarget = ruleManager.GetSecondTarget();
+            if (secondTarget != null)
+                targetHandManager.MarkTargetAsCompleted(secondTarget.handName);
+        }
+
         EndStage();
     }
 

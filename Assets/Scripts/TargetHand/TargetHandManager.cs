@@ -1,13 +1,12 @@
-// TargetHandManager.cs
 using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
 
 public class TargetHandManager : MonoBehaviour
 {
-    private List<TargetHand> allTargetHands;         // 所有36种牌型
-    private TargetHand currentTarget;                // 当前局目标
-    private List<string> completedTargetNames;       // 已完成（结算）的目标名称，永久排除
+    private List<TargetHand> allTargetHands;
+    private TargetHand currentTarget;
+    private List<string> completedTargetNames;
 
     void Awake()
     {
@@ -15,9 +14,6 @@ public class TargetHandManager : MonoBehaviour
         InitializeAllTargetHands();
     }
 
-    /// <summary>
-    /// 初始化全部36种目标牌型（检测逻辑委托给HandEvaluator）
-    /// </summary>
     private void InitializeAllTargetHands()
     {
         allTargetHands = new List<TargetHand>();
@@ -173,9 +169,6 @@ public class TargetHandManager : MonoBehaviour
         Debug.Log($"初始化完成，共{allTargetHands.Count}种目标牌型");
     }
 
-    /// <summary>
-    /// 按层级随机选取一个目标（排除已结算的）
-    /// </summary>
     public TargetHand SelectRandomTarget(int tier)
     {
         TargetHand.Tier targetTier = (TargetHand.Tier)(tier - 1);
@@ -197,9 +190,6 @@ public class TargetHandManager : MonoBehaviour
         return currentTarget;
     }
 
-    /// <summary>
-    /// 更换为同层级另一个随机目标（与当前目标不同，排除已结算的，但之前换掉的目标可能重新出现）
-    /// </summary>
     public TargetHand ChangeTarget()
     {
         if (currentTarget == null)
@@ -229,9 +219,6 @@ public class TargetHandManager : MonoBehaviour
         return currentTarget;
     }
 
-    /// <summary>
-    /// 获取双重目标（第二个目标与第一个不同，且都不能是已结算的）
-    /// </summary>
     public (TargetHand, TargetHand) GetDoubleTargets()
     {
         if (currentTarget == null)
@@ -259,9 +246,6 @@ public class TargetHandManager : MonoBehaviour
         return (currentTarget, secondTarget);
     }
 
-    /// <summary>
-    /// 标记当前目标为已完成（结算后调用，永久排除）
-    /// </summary>
     public void MarkCurrentTargetAsCompleted()
     {
         if (currentTarget == null)
@@ -278,8 +262,17 @@ public class TargetHandManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 公布当前目标（支持双重目标）
+    /// 根据目标名称标记为已完成（用于双重目标等场景）
     /// </summary>
+    public void MarkTargetAsCompleted(string handName)
+    {
+        if (!completedTargetNames.Contains(handName))
+        {
+            completedTargetNames.Add(handName);
+            Debug.Log($"目标 [{handName}] 已完成结算，永久排除");
+        }
+    }
+
     public void AnnounceTarget(TargetHand secondTarget = null)
     {
         if (currentTarget != null)
@@ -303,26 +296,17 @@ public class TargetHandManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 检查已翻牌区是否满足当前目标
-    /// </summary>
     public bool CheckTarget(List<Card> drawnCards)
     {
         if (currentTarget == null) return false;
         return currentTarget.checkCondition(drawnCards);
     }
 
-    /// <summary>
-    /// 获取当前目标信息
-    /// </summary>
     public TargetHand GetCurrentTarget()
     {
         return currentTarget;
     }
 
-    /// <summary>
-    /// 清除所有已完成记录（新游戏用）
-    /// </summary>
     public void ClearCompletedTargets()
     {
         completedTargetNames.Clear();
