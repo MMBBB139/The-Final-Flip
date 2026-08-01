@@ -12,7 +12,7 @@ public class StrategyCardData
     public int maxLevel = 1;
     public int upgradePrice;
     public bool isOncePerGame;
-    public bool isObservable;       // 是否属于观察类（用于第3层禁用）
+    public string category;
 }
 
 /// <summary>

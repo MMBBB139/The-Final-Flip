@@ -10,153 +10,197 @@ public static class StrategyCardDefinitions
         {
             switch (data.cardName)
             {
-                case "偷看顶牌":
+                // ===== 信息-看牌 =====
+                case "探顶":
                     list.Add(new StrategyCard(data, mgr => {
-                        int count = mgr.GetCardLevel("偷看顶牌") == 2 ? 5 : 2;
+                        int count = mgr.GetCardLevel("探顶") == 2 ? 5 : 3;
                         var cards = mgr.Deck.PeekTop(count);
-                        Debug.Log($"[偷看顶牌] 顶部{count}张:");
+                        Debug.Log($"[探顶] 顶部{count}张:");
                         foreach (var c in cards) Debug.Log($"  {c}");
+                        if (mgr.GetCardLevel("探顶") == 2 && cards.Count > 0)
+                            mgr.RequestSinkOneFromPeek(cards);
                     }));
                     break;
-                case "偷看中间":
+
+                case "探底":
                     list.Add(new StrategyCard(data, mgr => {
-                        int count = mgr.GetCardLevel("偷看中间") == 2 ? 10 : 5;
-                        var cards = mgr.Deck.PeekMiddle(count);
-                        Debug.Log($"[偷看中间] 中间{count}张:");
-                        foreach (var c in cards) Debug.Log($"  {c}");
-                    }));
-                    break;
-                case "偷看底牌":
-                    list.Add(new StrategyCard(data, mgr => {
-                        int count = mgr.GetCardLevel("偷看底牌") == 2 ? 15 : 8;
+                        int count = mgr.GetCardLevel("探底") == 2 ? 5 : 3;
                         var cards = mgr.Deck.PeekBottom(count);
-                        Debug.Log($"[偷看底牌] 底部{count}张:");
+                        Debug.Log($"[探底] 底部{count}张:");
+                        foreach (var c in cards) Debug.Log($"  {c}");
+                        if (mgr.GetCardLevel("探底") == 2 && cards.Count > 0)
+                            mgr.RequestTopOneFromPeek(cards);
+                    }));
+                    break;
+
+                case "探牌":
+                    list.Add(new StrategyCard(data, mgr => {
+                        int count = mgr.GetCardLevel("探牌") == 2 ? 5 : 3;
+                        var cards = mgr.Deck.PeekRandomUnrevealed(count);
+                        Debug.Log($"[探牌] 随机{count}张:");
                         foreach (var c in cards) Debug.Log($"  {c}");
                     }));
                     break;
-                case "定点找牌":
+
+                case "点数搜索":
                     list.Add(new StrategyCard(data, mgr => {
-                        int targetCount = mgr.GetCardLevel("定点找牌") == 2 ? 3 : 2;
-                        Card.Rank[] targets = { Card.Rank.Ace, Card.Rank.King, Card.Rank.Queen };
-                        var remaining = mgr.Deck.GetRemainingDeck();
-                        Debug.Log($"[定点找牌] 查找前{targetCount}个目标:");
-                        for (int i = 0; i < Mathf.Min(targetCount, targets.Length); i++)
-                        {
-                            for (int j = 0; j < remaining.Count; j++)
-                                if (remaining[j].rank == targets[i])
-                                {
-                                    Debug.Log($"  {targets[i]} 在第{j + 1}张");
-                                    break;
-                                }
-                        }
+                        mgr.RequestRankSearch(mgr.GetCardLevel("点数搜索") == 2);
                     }));
                     break;
-                case "提前验货":
+
+                case "花色搜索":
                     list.Add(new StrategyCard(data, mgr => {
-                        int count = mgr.GetCardLevel("提前验货") == 2 ? 8 : 5;
+                        mgr.RequestSuitSearch(mgr.GetCardLevel("花色搜索") == 2);
+                    }));
+                    break;
+
+                // ===== 信息-目标检测 =====
+                case "先知":
+                    list.Add(new StrategyCard(data, mgr => {
+                        int count = mgr.GetCardLevel("先知") == 2 ? 8 : 5;
                         var top = mgr.Deck.PeekTop(count);
                         var all = new List<Card>(mgr.Deck.GetDrawnCards());
                         all.AddRange(top);
                         var target = mgr.TargetHandManager.GetCurrentTarget();
                         if (target != null)
-                            Debug.Log($"[提前验货] 接下来{count}张{(target.checkCondition(all) ? "可以" : "无法")}达成[{target.handName}]");
-                    }));
-                    break;
-                case "删顶牌":
-                    list.Add(new StrategyCard(data, mgr => {
-                        int count = mgr.GetCardLevel("删顶牌") == 2 ? 10 : 5;
-                        mgr.Deck.RemoveTop(count);
-                    }));
-                    break;
-                case "底牌搬家":
-                    list.Add(new StrategyCard(data, mgr => {
-                        int count = mgr.GetCardLevel("底牌搬家") == 2 ? 8 : 5;
-                        mgr.Deck.MoveBottomToTop(count);
-                    }));
-                    break;
-                case "切牌":
-                    list.Add(new StrategyCard(data, mgr => {
-                        mgr.Deck.SplitAndSwap();
-                        if (mgr.GetCardLevel("切牌") == 2)
                         {
-                            var top3 = mgr.Deck.PeekTop(3);
-                            Debug.Log("[切牌] 新顶部3张:");
-                            foreach (var c in top3) Debug.Log($"  {c}");
+                            bool canAchieve = target.checkCondition(all);
+                            if (mgr.GetCardLevel("先知") == 2 && canAchieve)
+                            {
+                                int pos = FindFirstAchievePosition(mgr.Deck.GetDrawnCards(), top, target);
+                                Debug.Log($"[先知+] 接下来{count}张可达成，第{pos}张首次达成");
+                            }
+                            else
+                            {
+                                Debug.Log($"[先知] 接下来{count}张{(canAchieve ? "可以" : "无法")}达成");
+                            }
                         }
                     }));
                     break;
-                case "翻转发牌":
+
+                // ===== 改牌-移动 =====
+                case "沉底":
                     list.Add(new StrategyCard(data, mgr => {
-                        mgr.Deck.ReverseDeck();
+                        if (mgr.GetCardLevel("沉底") == 2)
+                            mgr.RequestSinkChoice(3);
+                        else
+                            mgr.Deck.MoveTopToBottom(2);
                     }));
                     break;
-                case "换花色":
+
+                case "置顶":
                     list.Add(new StrategyCard(data, mgr => {
-                        Debug.Log("[换花色] 效果已触发（需扩展花色替换逻辑）");
+                        if (mgr.GetCardLevel("置顶") == 2)
+                            mgr.RequestTopChoice(3);
+                        else
+                            mgr.Deck.MoveBottomToTop(2);
                     }));
                     break;
-                case "重洗牌堆":
+
+                // ===== 改牌-删复 =====
+                case "删除":
                     list.Add(new StrategyCard(data, mgr => {
-                        mgr.Deck.ReshuffleRemaining();
-                        if (mgr.GetCardLevel("重洗牌堆") == 2)
-                        {
-                            var top = mgr.Deck.PeekTop(2);
-                            Debug.Log("[重洗] 免费查看顶部2张:");
-                            foreach (var c in top) Debug.Log($"  {c}");
-                        }
+                        int max = mgr.GetCardLevel("删除") == 2 ? 2 : 1;
+                        mgr.RequestDeleteDrawnCards(max);
                     }));
                     break;
-                case "双重目标":
+
+                case "复制":
                     list.Add(new StrategyCard(data, mgr => {
-                        var (t1, t2) = mgr.TargetHandManager.GetDoubleTargets();
-                        if (t1 != null && t2 != null) mgr.TargetHandManager.AnnounceTarget(t2);
+                        bool toTop = mgr.GetCardLevel("复制") == 2;
+                        mgr.RequestCopyDrawnCard(toTop);
                     }));
                     break;
+
+                // ===== 改修正 =====
+                case "宽限":
+                    list.Add(new StrategyCard(data, mgr => {
+                        int extend = mgr.GetCardLevel("宽限") == 2 ? 4 : 2;
+                        mgr.CorrectionManager.ExtendCorrectionWindowBy(extend);
+                    }));
+                    break;
+
+                case "再修一次":
+                    list.Add(new StrategyCard(data, mgr => {
+                        int extra = mgr.GetCardLevel("再修一次") == 2 ? 2 : 1;
+                        mgr.CorrectionManager.AddCorrectionChances(extra);
+                    }));
+                    break;
+
+                case "修正促销":
+                    list.Add(new StrategyCard(data, mgr => {
+                        int cost = mgr.GetCardLevel("修正促销") == 2 ? 0 : 5;
+                        mgr.CorrectionManager.SetCorrectionCost(cost);
+                    }));
+                    break;
+
+                // ===== 改规则 =====
+                case "近误差红利":
+                    list.Add(new StrategyCard(data, mgr => {
+                        int bonus = mgr.GetCardLevel("近误差红利") == 2 ? 25 : 15;
+                        mgr.SetNearErrorBonus(bonus);
+                    }));
+                    break;
+
+                case "早鸟优惠":
+                    list.Add(new StrategyCard(data, mgr => {
+                        int threshold = mgr.GetCardLevel("早鸟优惠") == 2 ? 14 : 10;
+                        int bonus = mgr.GetCardLevel("早鸟优惠") == 2 ? 24 : 18;
+                        mgr.SetEarlyBird(threshold, bonus);
+                    }));
+                    break;
+
                 case "换目标":
-                    list.Add(new StrategyCard(data, mgr => mgr.TargetHandManager.ChangeTarget()));
-                    break;
-                case "半赔半赚":
-                    list.Add(new StrategyCard(data, mgr => mgr.SetSettlementMultiplier(0.5f)));
-                    break;
-                case "双倍输赢":
-                    list.Add(new StrategyCard(data, mgr => mgr.SetSettlementMultiplier(2.0f)));
-                    break;
-                case "容错两次":
-                    list.Add(new StrategyCard(data, mgr => mgr.SetErrorTolerance(2)));
-                    break;
-                case "亏损封顶":
-                    list.Add(new StrategyCard(data, mgr => mgr.SetLossCap(40)));
-                    break;
-                case "保留猜测":
-                    list.Add(new StrategyCard(data, mgr => mgr.SetKeepPreviousGuess(true)));
-                    break;
-                case "二次修正":
-                    list.Add(new StrategyCard(data, mgr => mgr.CorrectionManager.AddCorrectionChances(1)));
-                    break;
-                case "打折修正":
                     list.Add(new StrategyCard(data, mgr => {
-                        int newCost = mgr.GetCardLevel("打折修正") == 2 ? 0 : 10;
-                        mgr.CorrectionManager.SetCorrectionCost(newCost);
+                        int options = mgr.GetCardLevel("换目标") == 2 ? 3 : 2;
+                        var alternatives = mgr.TargetHandManager.GetAlternativeTargets(options);
+                        mgr.RequestTargetChoice(alternatives);
                     }));
                     break;
-                case "超时修正":
+
+                case "零误差红利":
                     list.Add(new StrategyCard(data, mgr => {
-                        int cost = mgr.GetCardLevel("超时修正") == 2 ? 20 : 40;
-                        mgr.CorrectionManager.ExtendCorrectionWindow(true);
-                        mgr.CorrectionManager.SetExtendedCorrectionCost(cost);
+                        int bonus = mgr.GetCardLevel("零误差红利") == 2 ? 50 : 30;
+                        mgr.SetZeroErrorBonus(bonus);
                     }));
                     break;
-                case "免死一次":
-                    list.Add(new StrategyCard(data, mgr => mgr.SetDeathSave(true)));
+
+                case "绝处逢生":
+                    list.Add(new StrategyCard(data, mgr => {
+                        mgr.SetDeathDefy(true);
+                    }));
                     break;
-                case "全押":
-                    list.Add(new StrategyCard(data, mgr => mgr.SetAllInMode(true)));
+
+                case "消除特殊":
+                    list.Add(new StrategyCard(data, mgr => {
+                        mgr.RuleManager.DisableSpecialRule();
+                    }));
                     break;
+
+                case "宽容+":
+                    list.Add(new StrategyCard(data, mgr => {
+                        int bonus = mgr.GetCardLevel("宽容+") == 2 ? 2 : 1;
+                        mgr.AddErrorToleranceBonus(bonus);
+                    }));
+                    break;
+
                 default:
                     Debug.LogWarning($"未实现效果的策略牌: {data.cardName}");
                     break;
             }
         }
         return list;
+    }
+
+    private static int FindFirstAchievePosition(List<Card> drawn, List<Card> upcoming, TargetHand target)
+    {
+        var sim = new List<Card>(drawn);
+        for (int i = 0; i < upcoming.Count; i++)
+        {
+            sim.Add(upcoming[i]);
+            if (target.checkCondition(sim))
+                return drawn.Count + i + 1;
+        }
+        return -1;
     }
 }

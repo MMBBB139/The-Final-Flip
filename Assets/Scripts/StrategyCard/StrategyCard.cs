@@ -11,11 +11,9 @@ public class StrategyCard
     public int maxLevel;
     public int currentLevel;
     public bool isOncePerGame;
-    public bool isObservable;
     public bool usedThisRound;
     public bool usedThisGame;
 
-    // 效果仍由代码实现，但通过管理器触发
     public Action<StrategyCardManager> executeEffect;
     public Func<StrategyCardManager, bool> canUseCondition;
 
@@ -27,7 +25,6 @@ public class StrategyCard
         maxLevel = data.maxLevel;
         upgradePrice = data.upgradePrice;
         isOncePerGame = data.isOncePerGame;
-        isObservable = data.isObservable;
         currentLevel = 1;
         usedThisRound = false;
         usedThisGame = false;

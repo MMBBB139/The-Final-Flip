@@ -12,30 +12,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: eb2dc5c458ea9ef4fb5c292759b85323, type: 3}
   m_Name: GameConfig
   m_EditorClassIdentifier: Assembly-CSharp::GameConfigSO
-  initialChips: 200
+  initialChips: 30
+  surviveReward: 20
   maxCorrectionsPerRound: 1
-  correctionCost: 20
-  shopSlotCount: 3
-  refreshCost: 20
+  correctionCost: 10
+  shopSlotCount: 2
+  refreshCost: 5
   maxCarryCards: 4
+  errorToleranceByLayer: 04000000030000000200000001000000
   layer1ReturnCardCount: 3
   layer2CorrectionWindowOffset: 3
-  errorTable:
-  - error: 0
-    early: 60
-    late: 60
-  - error: 1
-    early: 30
-    late: 20
-  - error: 2
-    early: -20
-    late: -40
-  - error: 3
-    early: -40
-    late: -60
-  - error: 4
-    early: -60
-    late: -80
-  - error: 5
-    early: -80
-    late: -100
+  layer3MaxDrawLimit: 25
+  layer4RevealFadedCost: 20

@@ -1,22 +1,15 @@
-using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
 public class RuleManager : MonoBehaviour
 {
     [SerializeField] private GameConfigSO config;
     [SerializeField] private Deck deck;
-    [SerializeField] private TargetHandManager targetHandManager;
-    [SerializeField] private StrategyCardManager strategyCardManager;
     [SerializeField] private CorrectionManager correctionManager;
 
     private int currentLayer;
     private bool isSpecialStage;
-    private bool nextCardIsFaded;
-    private bool observeCardsDisabled;
-    private TargetHand secondTarget;
-    private Card revealedCardForTarget1, revealedCardForTarget2;
-    private int revealedPos1, revealedPos2;
+    private bool specialRuleDisabled;
+    private bool nextCardFaded;
 
     void Awake()
     {
@@ -34,42 +27,37 @@ public class RuleManager : MonoBehaviour
     {
         currentLayer = layer;
         isSpecialStage = (stage == 3);
-        nextCardIsFaded = false;
-        observeCardsDisabled = false;
-        secondTarget = null;
-
-        if (isSpecialStage && layer == 4)
-            ApplyDoubleTargetRule();
+        specialRuleDisabled = false;
+        nextCardFaded = false;
     }
 
-    public bool CanUseStrategyCard(string cardName)
+    public void DisableSpecialRule()
     {
-        if (isSpecialStage && currentLayer == 3 && observeCardsDisabled)
-        {
-            var data = strategyCardManager.GetCardData(cardName);
-            if (data != null && data.isObservable)
-            {
-                Debug.LogWarning($"[规则] 观察类策略卡不可用：{cardName}");
-                return false;
-            }
-        }
-        return true;
+        specialRuleDisabled = true;
+        nextCardFaded = false;
+        Debug.Log("[消除特殊] 当前特殊规则已禁用");
     }
 
+    /// <summary>
+    /// 使用策略牌后触发（第4层特殊：下一张为褪色牌）
+    /// </summary>
     public void OnStrategyCardUsed()
     {
-        if (isSpecialStage && currentLayer == 3)
+        if (isSpecialStage && currentLayer == 4 && !specialRuleDisabled)
         {
-            nextCardIsFaded = true;
-            Debug.Log("[规则] 下一张牌将为褪色牌");
+            nextCardFaded = true;
+            Debug.Log("[规则] 使用策略牌，下一张将为褪色牌");
         }
     }
 
+    /// <summary>
+    /// 判断当前是否应该翻褪色牌（第4层特殊规则）
+    /// </summary>
     public bool ShouldDrawFadedCard()
     {
-        if (isSpecialStage && currentLayer == 3 && nextCardIsFaded)
+        if (isSpecialStage && currentLayer == 4 && !specialRuleDisabled && nextCardFaded)
         {
-            nextCardIsFaded = false;
+            nextCardFaded = false;
             return true;
         }
         return false;
@@ -77,78 +65,62 @@ public class RuleManager : MonoBehaviour
 
     public void OnCardDrawn(bool wasFaded)
     {
-        if (isSpecialStage && currentLayer == 3 && wasFaded && !observeCardsDisabled)
+        // 褪色牌相关逻辑由Deck处理
+    }
+
+    /// <summary>
+    /// 第3层特殊：前25张限制检查
+    /// </summary>
+    public bool IsLayer3LimitReached(int drawnCount)
+    {
+        if (isSpecialStage && currentLayer == 3 && !specialRuleDisabled)
         {
-            observeCardsDisabled = true;
-            Debug.Log("[规则] 已翻褪色牌，观察类策略卡禁用");
+            int limit = config != null ? config.layer3MaxDrawLimit : 25;
+            return drawnCount > limit;
         }
+        return false;
     }
 
     private void OnCorrectionUsed(int remaining, int cost)
     {
-        if (isSpecialStage && currentLayer == 1)
+        // 第1层特殊：使用修正后洗回最后3张
+        if (isSpecialStage && currentLayer == 1 && !specialRuleDisabled)
         {
             int returnCount = config != null ? config.layer1ReturnCardCount : 3;
             deck.ReturnLastDrawnToDeck(returnCount);
-            Debug.Log($"[规则] 已洗回最后{returnCount}张已翻牌");
+            Debug.Log($"[规则] 使用修正，洗回最后{returnCount}张已翻牌");
         }
     }
 
+    /// <summary>
+    /// 第2层特殊：修正窗口提前关闭偏移
+    /// </summary>
     public int GetCorrectionWindowOffset()
     {
-        if (isSpecialStage && currentLayer == 2)
+        if (isSpecialStage && currentLayer == 2 && !specialRuleDisabled)
             return config != null ? config.layer2CorrectionWindowOffset : 3;
         return 0;
     }
 
-    private void ApplyDoubleTargetRule()
+    /// <summary>
+    /// 恢复褪色牌显示（第4层特殊）
+    /// </summary>
+    public bool RevealFadedCard(int cardIndex, ChipsManager chips)
     {
-        var (t1, t2) = targetHandManager.GetDoubleTargets();
-        if (t1 != null && t2 != null)
-        {
-            secondTarget = t2;
-            RevealHint(t1, out revealedCardForTarget1, out revealedPos1);
-            RevealHint(t2, out revealedCardForTarget2, out revealedPos2);
-        }
+        int cost = config != null ? config.layer4RevealFadedCost : 20;
+        if (chips.GetChips() < cost) return false;
+        chips.AddChips(-cost);
+        deck.RevealFadedCard(cardIndex);
+        Debug.Log($"[规则] 恢复褪色牌，消耗{cost}");
+        return true;
     }
 
-    private void RevealHint(TargetHand target, out Card card, out int pos)
-    {
-        card = null; pos = -1;
-        var remaining = deck.GetRemainingDeck();
-        if (remaining.Count == 0) return;
-        var drawn = deck.GetDrawnCards();
-
-        foreach (var c in remaining.Select((c, i) => new { Card = c, Index = i }))
-        {
-            var sim = new List<Card>(drawn) { c.Card };
-            if (target.checkCondition(sim)) { card = c.Card; pos = c.Index + 1; break; }
-        }
-        if (card == null && remaining.Count > 0)
-        {
-            int rnd = new System.Random().Next(remaining.Count);
-            card = remaining[rnd];
-            pos = rnd + 1;
-        }
-        if (card != null) Debug.Log($"[规则] 目标[{target.handName}]提示牌：第{pos}张 {card}");
-    }
-
-    public bool CheckDoubleTargetsAchieved(List<Card> drawn)
-    {
-        if (!isSpecialStage || currentLayer != 4 || secondTarget == null) return false;
-        var primary = targetHandManager.GetCurrentTarget();
-        return primary != null && primary.checkCondition(drawn) && secondTarget.checkCondition(drawn);
-    }
-
-    public TargetHand GetSecondTarget() => secondTarget;
-    public bool IsDoubleTargetMode() => isSpecialStage && currentLayer == 4 && secondTarget != null;
-    public (Card, int) GetRevealed1() => (revealedCardForTarget1, revealedPos1);
-    public (Card, int) GetRevealed2() => (revealedCardForTarget2, revealedPos2);
+    public bool IsSpecialStage() => isSpecialStage && !specialRuleDisabled;
+    public int GetCurrentLayer() => currentLayer;
 
     public void ResetAll()
     {
-        nextCardIsFaded = false;
-        observeCardsDisabled = false;
-        secondTarget = null;
+        specialRuleDisabled = false;
+        nextCardFaded = false;
     }
 }

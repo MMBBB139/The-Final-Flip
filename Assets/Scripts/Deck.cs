@@ -5,11 +5,13 @@ public class Deck : MonoBehaviour
 {
     private List<Card> currentDeck;
     private List<Card> drawnCards;
+    private bool nextDrawFaded;
 
     void Awake()
     {
         currentDeck = new List<Card>();
         drawnCards = new List<Card>();
+        nextDrawFaded = false;
     }
 
     public List<Card> CreateStandardDeck()
@@ -32,6 +34,7 @@ public class Deck : MonoBehaviour
     {
         currentDeck = CreateStandardDeck();
         drawnCards.Clear();
+        nextDrawFaded = false;
 
         System.Random rng = new System.Random();
         int n = currentDeck.Count;
@@ -47,6 +50,14 @@ public class Deck : MonoBehaviour
         Debug.Log($"洗牌完成，牌堆共{currentDeck.Count}张");
     }
 
+    /// <summary>
+    /// 标记下一张翻牌为褪色牌
+    /// </summary>
+    public void MarkNextDrawFaded()
+    {
+        nextDrawFaded = true;
+    }
+
     public Card DrawTopCard(bool isFaded = false)
     {
         if (currentDeck.Count == 0)
@@ -58,15 +69,30 @@ public class Deck : MonoBehaviour
         Card drawn = currentDeck[0];
         currentDeck.RemoveAt(0);
 
-        if (isFaded)
+        bool shouldFade = isFaded || nextDrawFaded;
+        nextDrawFaded = false;
+
+        if (shouldFade)
         {
             drawn.isFaded = true;
         }
 
         drawnCards.Add(drawn);
 
-        Debug.Log($"翻开: {drawn} {(isFaded ? "[褪色]" : "")}，剩余{currentDeck.Count}张");
+        Debug.Log($"翻开: {drawn} {(shouldFade ? "[褪色]" : "")}，剩余{currentDeck.Count}张");
         return drawn;
+    }
+
+    /// <summary>
+    /// 恢复褪色牌显示
+    /// </summary>
+    public void RevealFadedCard(int index)
+    {
+        if (index >= 0 && index < currentDeck.Count)
+        {
+            currentDeck[index].isFaded = false;
+            Debug.Log($"恢复显示: {currentDeck[index]}");
+        }
     }
 
     public List<Card> PeekTop(int count)
@@ -93,11 +119,47 @@ public class Deck : MonoBehaviour
         return currentDeck.GetRange(startIndex, peekCount);
     }
 
+    /// <summary>
+    /// 随机显示未翻过的牌
+    /// </summary>
+    public List<Card> PeekRandomUnrevealed(int count)
+    {
+        if (currentDeck.Count == 0) return new List<Card>();
+
+        var rng = new System.Random();
+        int actual = Mathf.Min(count, currentDeck.Count);
+        var indices = new HashSet<int>();
+        var result = new List<Card>();
+
+        while (result.Count < actual)
+        {
+            int idx = rng.Next(currentDeck.Count);
+            if (indices.Add(idx))
+            {
+                result.Add(currentDeck[idx]);
+            }
+        }
+
+        return result;
+    }
+
     public void RemoveTop(int count)
     {
         int removeCount = Mathf.Min(count, currentDeck.Count);
         currentDeck.RemoveRange(0, removeCount);
         Debug.Log($"删除顶部{removeCount}张，剩余{currentDeck.Count}张");
+    }
+
+    /// <summary>
+    /// 顶部N张沉底
+    /// </summary>
+    public void MoveTopToBottom(int count)
+    {
+        int moveCount = Mathf.Min(count, currentDeck.Count);
+        List<Card> topCards = currentDeck.GetRange(0, moveCount);
+        currentDeck.RemoveRange(0, moveCount);
+        currentDeck.AddRange(topCards);
+        Debug.Log($"顶部{moveCount}张沉底");
     }
 
     public void MoveBottomToTop(int count)
@@ -187,9 +249,6 @@ public class Deck : MonoBehaviour
         Debug.Log($"随机移除从索引{startIndex}开始的连续{count}张，剩余{currentDeck.Count}张");
     }
 
-    /// <summary>
-    /// 将指定位置的牌移至顶部（翻转发牌升级效果）
-    /// </summary>
     public bool MoveCardToTop(int positionFromTop)
     {
         if (positionFromTop < 0 || positionFromTop >= currentDeck.Count)

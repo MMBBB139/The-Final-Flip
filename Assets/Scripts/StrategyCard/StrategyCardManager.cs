@@ -8,7 +8,6 @@ public class StrategyCardManager : MonoBehaviour
     [SerializeField] private Deck deck;
     [SerializeField] private ChipsManager chipsManager;
     [SerializeField] private TargetHandManager targetHandManager;
-    [SerializeField] private SettlementManager settlementManager;
     [SerializeField] private CorrectionManager correctionManager;
     [SerializeField] private RuleManager ruleManager;
 
@@ -16,11 +15,13 @@ public class StrategyCardManager : MonoBehaviour
     private List<StrategyCard> allDefinitions;
     private StrategyCardData[] allData;
 
-    private float settlementMultiplier = 1f;
-    private int errorTolerance = 0;
-    private int lossCap = int.MaxValue;
-    private bool deathSave;
-    private bool allInMode;
+    // 改规则类效果状态
+    private int nearErrorBonus;
+    private int earlyBirdThreshold = int.MaxValue;
+    private int earlyBirdBonus;
+    private int zeroErrorBonus;
+    private bool deathDefy;
+    private int errorToleranceBonus;
     private bool keepPreviousGuess;
     private int previousGuessN;
 
@@ -28,6 +29,18 @@ public class StrategyCardManager : MonoBehaviour
     public ChipsManager ChipsManager => chipsManager;
     public TargetHandManager TargetHandManager => targetHandManager;
     public CorrectionManager CorrectionManager => correctionManager;
+    public RuleManager RuleManager => ruleManager;
+
+    // 交互请求回调
+    public System.Action<List<Card>> OnRequestSinkOneFromPeek;
+    public System.Action<List<Card>> OnRequestTopOneFromPeek;
+    public System.Action<int> OnRequestSinkChoice;
+    public System.Action<int> OnRequestTopChoice;
+    public System.Action<int> OnRequestDeleteDrawnCards;
+    public System.Action<bool> OnRequestCopyDrawnCard;
+    public System.Action<bool> OnRequestRankSearch;
+    public System.Action<bool> OnRequestSuitSearch;
+    public System.Action<List<TargetHand>> OnRequestTargetChoice;
 
     void Awake()
     {
@@ -47,10 +60,7 @@ public class StrategyCardManager : MonoBehaviour
     public StrategyCardData GetCardData(string cardName)
     {
         foreach (var data in allData)
-        {
-            if (data.cardName == cardName)
-                return data;
-        }
+            if (data.cardName == cardName) return data;
         return null;
     }
 
@@ -83,6 +93,13 @@ public class StrategyCardManager : MonoBehaviour
         if (chipsManager.GetChips() < cost) return false;
         chipsManager.AddChips(-cost);
         card.Upgrade();
+
+        // 升级后刷新效果
+        var data = GetCardData(cardName);
+        var newDef = allDefinitions.Find(c => c.cardName == cardName);
+        if (newDef != null)
+            card.executeEffect = newDef.executeEffect;
+
         Debug.Log($"{cardName}升级至Lv.{card.currentLevel}");
         return true;
     }
@@ -102,11 +119,12 @@ public class StrategyCardManager : MonoBehaviour
     {
         var card = ownedCards.Find(c => c.cardName == cardName);
         if (card == null || !card.IsAvailableThisRound()) return false;
-        if (ruleManager != null && !ruleManager.CanUseStrategyCard(cardName)) return false;
         if (!card.canUseCondition(this)) return false;
 
         card.executeEffect(this);
         card.usedThisRound = true;
+
+        // 触发第4层特殊规则
         ruleManager?.OnStrategyCardUsed();
 
         if (card.isOncePerGame)
@@ -122,52 +140,59 @@ public class StrategyCardManager : MonoBehaviour
     public List<StrategyCard> GetOwnedCards() => new List<StrategyCard>(ownedCards);
     public List<StrategyCard> GetAllDefinitions() => allDefinitions;
 
-    public void SetSettlementMultiplier(float m) => settlementMultiplier = m;
-    public float GetSettlementMultiplier() => settlementMultiplier;
-    public void SetErrorTolerance(int t) => errorTolerance = t;
-    public bool IsWithinTolerance(int error) => error <= errorTolerance;
-    public void SetLossCap(int cap) => lossCap = cap;
-    public int GetLossCap() => lossCap;
-    public void SetDeathSave(bool v) => deathSave = v;
-    public void SetAllInMode(bool v) => allInMode = v;
-    public bool IsAllInMode() => allInMode;
+    // 改规则效果 getter/setter
+    public void SetNearErrorBonus(int b) => nearErrorBonus = b;
+    public int GetNearErrorBonus() => nearErrorBonus;
+    public void SetEarlyBird(int threshold, int bonus) { earlyBirdThreshold = threshold; earlyBirdBonus = bonus; }
+    public int GetEarlyBirdThreshold() => earlyBirdThreshold;
+    public int GetEarlyBirdBonus() => earlyBirdBonus;
+    public void SetZeroErrorBonus(int b) => zeroErrorBonus = b;
+    public int GetZeroErrorBonus() => zeroErrorBonus;
+    public void SetDeathDefy(bool v) => deathDefy = v;
+    public bool HasDeathDefy() => deathDefy;
+    public void ConsumeDeathDefy() => deathDefy = false;
+    public void AddErrorToleranceBonus(int b) => errorToleranceBonus += b;
+    public int GetErrorToleranceBonus() => errorToleranceBonus;
     public void SetKeepPreviousGuess(bool v) => keepPreviousGuess = v;
     public bool IsKeepPreviousGuess() => keepPreviousGuess;
     public int GetPreviousGuess() => previousGuessN;
 
-    public int ApplyAllInSettlement(int baseChange)
-    {
-        if (!allInMode) return baseChange;
-        allInMode = false;
-        return baseChange > 0 ? baseChange * 3 : -chipsManager.GetChips();
-    }
-
-    public int ApplyLossCap(int change) => change < -lossCap ? -lossCap : change;
+    // 交互请求
+    public void RequestSinkOneFromPeek(List<Card> cards) => OnRequestSinkOneFromPeek?.Invoke(cards);
+    public void RequestTopOneFromPeek(List<Card> cards) => OnRequestTopOneFromPeek?.Invoke(cards);
+    public void RequestSinkChoice(int count) => OnRequestSinkChoice?.Invoke(count);
+    public void RequestTopChoice(int count) => OnRequestTopChoice?.Invoke(count);
+    public void RequestDeleteDrawnCards(int max) => OnRequestDeleteDrawnCards?.Invoke(max);
+    public void RequestCopyDrawnCard(bool toTop) => OnRequestCopyDrawnCard?.Invoke(toTop);
+    public void RequestRankSearch(bool showAll) => OnRequestRankSearch?.Invoke(showAll);
+    public void RequestSuitSearch(bool showAll) => OnRequestSuitSearch?.Invoke(showAll);
+    public void RequestTargetChoice(List<TargetHand> options) => OnRequestTargetChoice?.Invoke(options);
 
     public void ResetAllForNewStage()
     {
         foreach (var c in ownedCards) c.usedThisRound = false;
-        settlementMultiplier = 1f;
-        errorTolerance = 0;
-        lossCap = int.MaxValue;
-        deathSave = false;
-        allInMode = false;
+        nearErrorBonus = 0;
+        earlyBirdThreshold = int.MaxValue;
+        earlyBirdBonus = 0;
+        zeroErrorBonus = 0;
         keepPreviousGuess = false;
     }
 
     public void ResetAllForNewGame()
     {
         ownedCards.Clear();
+        deathDefy = false;
+        errorToleranceBonus = 0;
         ResetAllForNewStage();
     }
 
     private void OnChipsChanged(int newChips)
     {
-        if (deathSave && newChips <= 0)
+        if (deathDefy && newChips <= 0)
         {
             chipsManager.SetChips(1);
-            deathSave = false;
-            Debug.Log("[免死] 触发，筹码保留1");
+            deathDefy = false;
+            Debug.Log("[绝处逢生] 触发，筹码保留1");
         }
     }
 

@@ -45,8 +45,21 @@ public class ChipsManager : MonoBehaviour
 
     public void ResetChips()
     {
-        currentChips = config != null ? config.initialChips : 200;
+        currentChips = config != null ? config.initialChips : 30;
         Debug.Log($"筹码重置为: {currentChips}");
         OnChipsChanged?.Invoke(currentChips);
+    }
+
+    /// <summary>
+    /// 存活奖励：每局结束如果玩家存活，固定+20
+    /// </summary>
+    public void AwardSurviveBonus()
+    {
+        if (currentChips > 0)
+        {
+            int bonus = config != null ? config.surviveReward : 20;
+            AddChips(bonus);
+            Debug.Log($"存活奖励 +{bonus}");
+        }
     }
 }

@@ -11,13 +11,9 @@ public class GameConfigGenerator : EditorWindow
     [MenuItem("Tools/地下赌场/生成所有配置文件")]
     public static void GenerateAllConfigs()
     {
-        // 确保目录存在
         EnsureDirectoryExists("Assets/Configs");
 
-        // 生成游戏配置
         GenerateGameConfig();
-
-        // 生成策略牌数据库
         GenerateStrategyCardDatabase();
 
         AssetDatabase.Refresh();
@@ -40,7 +36,6 @@ public class GameConfigGenerator : EditorWindow
     {
         string assetPath = "Assets/Configs/GameConfig.asset";
 
-        // 检查是否已存在
         if (AssetDatabase.LoadAssetAtPath<GameConfigSO>(assetPath) != null)
         {
             Debug.LogWarning($"GameConfig 已存在于 {assetPath}，跳过生成。如需重新生成请先删除。");
@@ -49,25 +44,18 @@ public class GameConfigGenerator : EditorWindow
 
         GameConfigSO config = ScriptableObject.CreateInstance<GameConfigSO>();
 
-        // 设置默认值
-        config.initialChips = 200;
+        config.initialChips = 30;
+        config.surviveReward = 20;
         config.maxCorrectionsPerRound = 1;
-        config.correctionCost = 20;
-        config.shopSlotCount = 3;
-        config.refreshCost = 20;
+        config.correctionCost = 10;
+        config.shopSlotCount = 2;
+        config.refreshCost = 5;
         config.maxCarryCards = 4;
+        config.errorToleranceByLayer = new int[] { 4, 3, 2, 1 };
         config.layer1ReturnCardCount = 3;
         config.layer2CorrectionWindowOffset = 3;
-
-        config.errorTable = new GameConfigSO.ErrorEntry[]
-        {
-            new GameConfigSO.ErrorEntry { error = 0, early = 60, late = 60 },
-            new GameConfigSO.ErrorEntry { error = 1, early = 30, late = 20 },
-            new GameConfigSO.ErrorEntry { error = 2, early = -20, late = -40 },
-            new GameConfigSO.ErrorEntry { error = 3, early = -40, late = -60 },
-            new GameConfigSO.ErrorEntry { error = 4, early = -60, late = -80 },
-            new GameConfigSO.ErrorEntry { error = 5, early = -80, late = -100 },
-        };
+        config.layer3MaxDrawLimit = 25;
+        config.layer4RevealFadedCost = 20;
 
         AssetDatabase.CreateAsset(config, assetPath);
         Debug.Log($"GameConfig 已生成：{assetPath}");
@@ -77,7 +65,6 @@ public class GameConfigGenerator : EditorWindow
     {
         string assetPath = "Assets/Configs/StrategyCardDatabase.asset";
 
-        // 检查是否已存在
         if (AssetDatabase.LoadAssetAtPath<StrategyCardDataSO>(assetPath) != null)
         {
             Debug.LogWarning($"StrategyCardDatabase 已存在于 {assetPath}，跳过生成。如需重新生成请先删除。");
@@ -88,244 +75,216 @@ public class GameConfigGenerator : EditorWindow
 
         database.cards = new StrategyCardData[]
         {
-            // ============ 观察类 ============
+            // ============ 信息-看牌 ============
             new StrategyCardData
             {
-                cardName = "偷看顶牌",
-                description = "查看牌堆顶部2张",
-                price = 25,
+                cardName = "探顶",
+                description = "看牌堆顶部3张\n升级：看顶部5张，可选其中1张沉底",
+                price = 6,
                 maxLevel = 2,
-                upgradePrice = 20,
+                upgradePrice = 10,
                 isOncePerGame = false,
-                isObservable = true
+                category = "信息"
             },
             new StrategyCardData
             {
-                cardName = "偷看中间",
-                description = "查看牌堆中间5张",
+                cardName = "探底",
+                description = "看牌堆底部3张\n升级：看底部5张，可选其中1张置顶",
+                price = 6,
+                maxLevel = 2,
+                upgradePrice = 10,
+                isOncePerGame = false,
+                category = "信息"
+            },
+            new StrategyCardData
+            {
+                cardName = "探牌",
+                description = "随机显示牌堆中3张未翻过的牌\n升级：随机显示5张",
                 price = 8,
                 maxLevel = 2,
-                upgradePrice = 7,
+                upgradePrice = 14,
                 isOncePerGame = false,
-                isObservable = true
+                category = "信息"
             },
             new StrategyCardData
             {
-                cardName = "偷看底牌",
-                description = "查看牌堆底部8张",
+                cardName = "点数搜索",
+                description = "指定1个点数，随机显示牌堆中两张该点数的未翻牌\n升级：显示牌堆中所有该点数的未翻牌",
+                price = 16,
+                maxLevel = 2,
+                upgradePrice = 24,
+                isOncePerGame = false,
+                category = "信息"
+            },
+            new StrategyCardData
+            {
+                cardName = "花色搜索",
+                description = "指定1个花色，随机显示牌堆中两张该花色的未翻牌\n升级：显示牌堆中所有该花色的未翻牌",
+                price = 16,
+                maxLevel = 2,
+                upgradePrice = 24,
+                isOncePerGame = false,
+                category = "信息"
+            },
+
+            // ============ 信息-目标检测 ============
+            new StrategyCardData
+            {
+                cardName = "先知",
+                description = "接下来5张是否达成目标牌型？（只答是/否）\n升级：接下来8张是否达成？若\"是\"，告知第几张首次达成",
+                price = 8,
+                maxLevel = 2,
+                upgradePrice = 18,
+                isOncePerGame = false,
+                category = "信息"
+            },
+
+            // ============ 改牌-移动 ============
+            new StrategyCardData
+            {
+                cardName = "沉底",
+                description = "顶部2张沉底\n升级：顶部3张牌任意选择沉底哪些",
+                price = 5,
+                maxLevel = 2,
+                upgradePrice = 9,
+                isOncePerGame = false,
+                category = "改牌-移动"
+            },
+            new StrategyCardData
+            {
+                cardName = "置顶",
+                description = "底部2张置顶\n升级：底部3张任意选择置顶哪些",
+                price = 6,
+                maxLevel = 2,
+                upgradePrice = 10,
+                isOncePerGame = false,
+                category = "改牌-移动"
+            },
+
+            // ============ 改牌-删复 ============
+            new StrategyCardData
+            {
+                cardName = "删除",
+                description = "删除1张已翻牌，不改变翻牌计数\n升级：删除最多2张已翻牌",
                 price = 10,
                 maxLevel = 2,
-                upgradePrice = 8,
+                upgradePrice = 18,
                 isOncePerGame = false,
-                isObservable = true
+                category = "改牌-删复"
             },
             new StrategyCardData
             {
-                cardName = "定点找牌",
-                description = "查看2张指定点数牌的精确位置",
-                price = 30,
+                cardName = "复制",
+                description = "复制1张已翻牌，洗入剩余牌堆\n升级：复制1张已翻牌并直接置顶",
+                price = 14,
                 maxLevel = 2,
-                upgradePrice = 25,
+                upgradePrice = 22,
                 isOncePerGame = false,
-                isObservable = true
+                category = "改牌-删复"
             },
+
+            // ============ 改修正 ============
             new StrategyCardData
             {
-                cardName = "提前验货",
-                description = "查看接下来5张能否凑齐目标",
-                price = 16,
+                cardName = "宽限",
+                description = "修正窗口延长2张\n升级：修正窗口延长4张",
+                price = 6,
                 maxLevel = 2,
                 upgradePrice = 12,
                 isOncePerGame = false,
-                isObservable = true
+                category = "改修正"
+            },
+            new StrategyCardData
+            {
+                cardName = "再修一次",
+                description = "本局额外1次修正机会\n升级：本局额外2次修正机会",
+                price = 12,
+                maxLevel = 2,
+                upgradePrice = 22,
+                isOncePerGame = false,
+                category = "改修正"
+            },
+            new StrategyCardData
+            {
+                cardName = "修正促销",
+                description = "本局修正只消耗5筹码\n升级：本局修正不消耗筹码",
+                price = 10,
+                maxLevel = 2,
+                upgradePrice = 20,
+                isOncePerGame = false,
+                category = "改修正"
             },
 
-            // ============ 改牌类 ============
+            // ============ 改规则 ============
             new StrategyCardData
             {
-                cardName = "删顶牌",
-                description = "删除牌堆顶部5张",
-                price = 35,
+                cardName = "近误差红利",
+                description = "本局误差为1时额外获得15筹码\n升级：本局误差≤1时额外获得25筹码",
+                price = 10,
                 maxLevel = 2,
                 upgradePrice = 20,
                 isOncePerGame = false,
-                isObservable = false
+                category = "改规则"
             },
             new StrategyCardData
             {
-                cardName = "底牌搬家",
-                description = "从底部取5张插入顶部",
-                price = 30,
+                cardName = "早鸟优惠",
+                description = "本局翻牌数≤10时达成目标，额外获得18筹码\n升级：翻牌数≤14时达成目标，额外获得24筹码",
+                price = 10,
                 maxLevel = 2,
                 upgradePrice = 20,
                 isOncePerGame = false,
-                isObservable = false
-            },
-            new StrategyCardData
-            {
-                cardName = "切牌",
-                description = "对半分并交换位置",
-                price = 25,
-                maxLevel = 2,
-                upgradePrice = 15,
-                isOncePerGame = false,
-                isObservable = false
-            },
-            new StrategyCardData
-            {
-                cardName = "翻转发牌",
-                description = "剩余牌堆顺序完全翻转",
-                price = 25,
-                maxLevel = 2,
-                upgradePrice = 20,
-                isOncePerGame = false,
-                isObservable = false
-            },
-            new StrategyCardData
-            {
-                cardName = "换花色",
-                description = "指定两种花色全部替换（含颜色）",
-                price = 35,
-                maxLevel = 2,
-                upgradePrice = 25,
-                isOncePerGame = false,
-                isObservable = false
-            },
-            new StrategyCardData
-            {
-                cardName = "重洗牌堆",
-                description = "彻底洗牌剩余牌堆",
-                price = 40,
-                maxLevel = 2,
-                upgradePrice = 25,
-                isOncePerGame = false,
-                isObservable = false
-            },
-
-            // ============ 改目标类 ============
-            new StrategyCardData
-            {
-                cardName = "双重目标",
-                description = "同时追踪2个随机目标，完成任一即可达成（但不强制）",
-                price = 20,
-                maxLevel = 1,
-                upgradePrice = 0,
-                isOncePerGame = false,
-                isObservable = false
+                category = "改规则"
             },
             new StrategyCardData
             {
                 cardName = "换目标",
-                description = "刷新为同难度层另一个随机牌型",
-                price = 10,
-                maxLevel = 1,
-                upgradePrice = 0,
+                description = "目标替换为同层级随机2个目标中的1个（自选）\n升级：替换为同层级随机3个目标中的1个",
+                price = 14,
+                maxLevel = 2,
+                upgradePrice = 22,
                 isOncePerGame = false,
-                isObservable = false
-            },
-
-            // ============ 改结算类 ============
-            new StrategyCardData
-            {
-                cardName = "半赔半赚",
-                description = "结算倍率×0.5",
-                price = 15,
-                maxLevel = 1,
-                upgradePrice = 0,
-                isOncePerGame = false,
-                isObservable = false
+                category = "改规则"
             },
             new StrategyCardData
             {
-                cardName = "双倍输赢",
-                description = "结算倍率×2.0",
+                cardName = "零误差红利",
+                description = "本局误差为0时额外获得30筹码\n升级：本局误差为0时额外获得50筹码",
+                price = 18,
+                maxLevel = 2,
+                upgradePrice = 30,
+                isOncePerGame = false,
+                category = "改规则"
+            },
+            new StrategyCardData
+            {
+                cardName = "绝处逢生",
+                description = "一次性，本局失败改为视为存活，无筹码奖励",
+                price = 28,
+                maxLevel = 1,
+                upgradePrice = 0,
+                isOncePerGame = true,
+                category = "改规则"
+            },
+            new StrategyCardData
+            {
+                cardName = "消除特殊",
+                description = "一次性，消除当前特殊规则关的特殊规则",
                 price = 25,
                 maxLevel = 1,
                 upgradePrice = 0,
-                isOncePerGame = false,
-                isObservable = false
-            },
-            new StrategyCardData
-            {
-                cardName = "容错两次",
-                description = "±2误差不扣不加",
-                price = 40,
-                maxLevel = 1,
-                upgradePrice = 0,
-                isOncePerGame = false,
-                isObservable = false
-            },
-            new StrategyCardData
-            {
-                cardName = "亏损封顶",
-                description = "本局损失上限-40",
-                price = 40,
-                maxLevel = 1,
-                upgradePrice = 0,
-                isOncePerGame = false,
-                isObservable = false
-            },
-            new StrategyCardData
-            {
-                cardName = "免死一次",
-                description = "致命伤害时筹码强制保留1点；购买后永不出现",
-                price = 100,
-                maxLevel = 1,
-                upgradePrice = 0,
                 isOncePerGame = true,
-                isObservable = false
+                category = "改规则"
             },
             new StrategyCardData
             {
-                cardName = "全押",
-                description = "可在修正前激活；扣则归零，赚则×3；购买后永不出现",
-                price = 60,
-                maxLevel = 1,
-                upgradePrice = 0,
-                isOncePerGame = true,
-                isObservable = false
-            },
-            new StrategyCardData
-            {
-                cardName = "保留猜测",
-                description = "修正前猜测被保留，结算选误差更小的",
-                price = 55,
-                maxLevel = 1,
-                upgradePrice = 0,
-                isOncePerGame = false,
-                isObservable = false
-            },
-
-            // ============ 改修正类 ============
-            new StrategyCardData
-            {
-                cardName = "二次修正",
-                description = "本局修正次数变为2次",
-                price = 65,
-                maxLevel = 1,
-                upgradePrice = 0,
-                isOncePerGame = false,
-                isObservable = false
-            },
-            new StrategyCardData
-            {
-                cardName = "打折修正",
-                description = "修正消耗-10（即-10）",
-                price = 20,
+                cardName = "宽容+",
+                description = "本层误差容忍度+1\n升级：本层误差容忍度+2",
+                price = 24,
                 maxLevel = 2,
-                upgradePrice = 25,
+                upgradePrice = 44,
                 isOncePerGame = false,
-                isObservable = false
-            },
-            new StrategyCardData
-            {
-                cardName = "超时修正",
-                description = "翻过N后仍可修正，消耗-40",
-                price = 18,
-                maxLevel = 2,
-                upgradePrice = 25,
-                isOncePerGame = false,
-                isObservable = false
+                category = "改规则"
             },
         };
 

@@ -1,5 +1,3 @@
-// Card.cs
-
 using System;
 
 [Serializable]
@@ -7,10 +5,10 @@ public class Card
 {
     public enum Suit
     {
-        Spades,     // 黑桃 ♠
-        Hearts,     // 红心 ♥
-        Clubs,      // 梅花 ♣
-        Diamonds    // 方块 ♦
+        Spades,
+        Hearts,
+        Clubs,
+        Diamonds
     }
 
     public enum Rank
@@ -39,7 +37,7 @@ public class Card
     public Suit suit;
     public Rank rank;
     public CardColor color;
-    public bool isFaded;  // 新增：褪色牌标记（隐藏花色点数，但结算有效）
+    public bool isFaded;
 
     public Card(Suit suit, Rank rank)
     {

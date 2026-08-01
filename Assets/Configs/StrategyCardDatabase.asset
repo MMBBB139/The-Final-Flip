@@ -13,164 +13,143 @@ MonoBehaviour:
   m_Name: StrategyCardDatabase
   m_EditorClassIdentifier: Assembly-CSharp::StrategyCardDataSO
   cards:
-  - cardName: "\u5077\u770B\u9876\u724C"
-    description: "\u67E5\u770B\u724C\u5806\u9876\u90E82\u5F20"
-    price: 25
+  - cardName: "\u63A2\u9876"
+    description: "\u770B\u724C\u5806\u9876\u90E83\u5F20\n\u5347\u7EA7\uFF1A\u770B\u9876\u90E85\u5F20\uFF0C\u53EF\u9009\u5176\u4E2D1\u5F20\u6C89\u5E95"
+    price: 6
     maxLevel: 2
-    upgradePrice: 20
+    upgradePrice: 10
     isOncePerGame: 0
-    isObservable: 1
-  - cardName: "\u5077\u770B\u4E2D\u95F4"
-    description: "\u67E5\u770B\u724C\u5806\u4E2D\u95F45\u5F20"
+    category: "\u4FE1\u606F"
+  - cardName: "\u63A2\u5E95"
+    description: "\u770B\u724C\u5806\u5E95\u90E83\u5F20\n\u5347\u7EA7\uFF1A\u770B\u5E95\u90E85\u5F20\uFF0C\u53EF\u9009\u5176\u4E2D1\u5F20\u7F6E\u9876"
+    price: 6
+    maxLevel: 2
+    upgradePrice: 10
+    isOncePerGame: 0
+    category: "\u4FE1\u606F"
+  - cardName: "\u63A2\u724C"
+    description: "\u968F\u673A\u663E\u793A\u724C\u5806\u4E2D3\u5F20\u672A\u7FFB\u8FC7\u7684\u724C\n\u5347\u7EA7\uFF1A\u968F\u673A\u663E\u793A5\u5F20"
     price: 8
     maxLevel: 2
-    upgradePrice: 7
+    upgradePrice: 14
     isOncePerGame: 0
-    isObservable: 1
-  - cardName: "\u5077\u770B\u5E95\u724C"
-    description: "\u67E5\u770B\u724C\u5806\u5E95\u90E88\u5F20"
+    category: "\u4FE1\u606F"
+  - cardName: "\u70B9\u6570\u641C\u7D22"
+    description: "\u6307\u5B9A1\u4E2A\u70B9\u6570\uFF0C\u968F\u673A\u663E\u793A\u724C\u5806\u4E2D\u4E24\u5F20\u8BE5\u70B9\u6570\u7684\u672A\u7FFB\u724C\n\u5347\u7EA7\uFF1A\u663E\u793A\u724C\u5806\u4E2D\u6240\u6709\u8BE5\u70B9\u6570\u7684\u672A\u7FFB\u724C"
+    price: 16
+    maxLevel: 2
+    upgradePrice: 24
+    isOncePerGame: 0
+    category: "\u4FE1\u606F"
+  - cardName: "\u82B1\u8272\u641C\u7D22"
+    description: "\u6307\u5B9A1\u4E2A\u82B1\u8272\uFF0C\u968F\u673A\u663E\u793A\u724C\u5806\u4E2D\u4E24\u5F20\u8BE5\u82B1\u8272\u7684\u672A\u7FFB\u724C\n\u5347\u7EA7\uFF1A\u663E\u793A\u724C\u5806\u4E2D\u6240\u6709\u8BE5\u82B1\u8272\u7684\u672A\u7FFB\u724C"
+    price: 16
+    maxLevel: 2
+    upgradePrice: 24
+    isOncePerGame: 0
+    category: "\u4FE1\u606F"
+  - cardName: "\u5148\u77E5"
+    description: "\u63A5\u4E0B\u67655\u5F20\u662F\u5426\u8FBE\u6210\u76EE\u6807\u724C\u578B\uFF1F\uFF08\u53EA\u7B54\u662F/\u5426\uFF09\n\u5347\u7EA7\uFF1A\u63A5\u4E0B\u67658\u5F20\u662F\u5426\u8FBE\u6210\uFF1F\u82E5\"\u662F\"\uFF0C\u544A\u77E5\u7B2C\u51E0\u5F20\u9996\u6B21\u8FBE\u6210"
+    price: 8
+    maxLevel: 2
+    upgradePrice: 18
+    isOncePerGame: 0
+    category: "\u4FE1\u606F"
+  - cardName: "\u6C89\u5E95"
+    description: "\u9876\u90E82\u5F20\u6C89\u5E95\n\u5347\u7EA7\uFF1A\u9876\u90E83\u5F20\u724C\u4EFB\u610F\u9009\u62E9\u6C89\u5E95\u54EA\u4E9B"
+    price: 5
+    maxLevel: 2
+    upgradePrice: 9
+    isOncePerGame: 0
+    category: "\u6539\u724C-\u79FB\u52A8"
+  - cardName: "\u7F6E\u9876"
+    description: "\u5E95\u90E82\u5F20\u7F6E\u9876\n\u5347\u7EA7\uFF1A\u5E95\u90E83\u5F20\u4EFB\u610F\u9009\u62E9\u7F6E\u9876\u54EA\u4E9B"
+    price: 6
+    maxLevel: 2
+    upgradePrice: 10
+    isOncePerGame: 0
+    category: "\u6539\u724C-\u79FB\u52A8"
+  - cardName: "\u5220\u9664"
+    description: "\u5220\u96641\u5F20\u5DF2\u7FFB\u724C\uFF0C\u4E0D\u6539\u53D8\u7FFB\u724C\u8BA1\u6570\n\u5347\u7EA7\uFF1A\u5220\u9664\u6700\u591A2\u5F20\u5DF2\u7FFB\u724C"
     price: 10
     maxLevel: 2
-    upgradePrice: 8
+    upgradePrice: 18
     isOncePerGame: 0
-    isObservable: 1
-  - cardName: "\u5B9A\u70B9\u627E\u724C"
-    description: "\u67E5\u770B2\u5F20\u6307\u5B9A\u70B9\u6570\u724C\u7684\u7CBE\u786E\u4F4D\u7F6E"
-    price: 30
+    category: "\u6539\u724C-\u5220\u590D"
+  - cardName: "\u590D\u5236"
+    description: "\u590D\u52361\u5F20\u5DF2\u7FFB\u724C\uFF0C\u6D17\u5165\u5269\u4F59\u724C\u5806\n\u5347\u7EA7\uFF1A\u590D\u52361\u5F20\u5DF2\u7FFB\u724C\u5E76\u76F4\u63A5\u7F6E\u9876"
+    price: 14
     maxLevel: 2
-    upgradePrice: 25
+    upgradePrice: 22
     isOncePerGame: 0
-    isObservable: 1
-  - cardName: "\u63D0\u524D\u9A8C\u8D27"
-    description: "\u67E5\u770B\u63A5\u4E0B\u67655\u5F20\u80FD\u5426\u51D1\u9F50\u76EE\u6807"
-    price: 16
+    category: "\u6539\u724C-\u5220\u590D"
+  - cardName: "\u5BBD\u9650"
+    description: "\u4FEE\u6B63\u7A97\u53E3\u5EF6\u957F2\u5F20\n\u5347\u7EA7\uFF1A\u4FEE\u6B63\u7A97\u53E3\u5EF6\u957F4\u5F20"
+    price: 6
     maxLevel: 2
     upgradePrice: 12
     isOncePerGame: 0
-    isObservable: 1
-  - cardName: "\u5220\u9876\u724C"
-    description: "\u5220\u9664\u724C\u5806\u9876\u90E85\u5F20"
-    price: 35
+    category: "\u6539\u4FEE\u6B63"
+  - cardName: "\u518D\u4FEE\u4E00\u6B21"
+    description: "\u672C\u5C40\u989D\u59161\u6B21\u4FEE\u6B63\u673A\u4F1A\n\u5347\u7EA7\uFF1A\u672C\u5C40\u989D\u59162\u6B21\u4FEE\u6B63\u673A\u4F1A"
+    price: 12
     maxLevel: 2
-    upgradePrice: 20
+    upgradePrice: 22
     isOncePerGame: 0
-    isObservable: 0
-  - cardName: "\u5E95\u724C\u642C\u5BB6"
-    description: "\u4ECE\u5E95\u90E8\u53D65\u5F20\u63D2\u5165\u9876\u90E8"
-    price: 30
-    maxLevel: 2
-    upgradePrice: 20
-    isOncePerGame: 0
-    isObservable: 0
-  - cardName: "\u5207\u724C"
-    description: "\u5BF9\u534A\u5206\u5E76\u4EA4\u6362\u4F4D\u7F6E"
-    price: 25
-    maxLevel: 2
-    upgradePrice: 15
-    isOncePerGame: 0
-    isObservable: 0
-  - cardName: "\u7FFB\u8F6C\u53D1\u724C"
-    description: "\u5269\u4F59\u724C\u5806\u987A\u5E8F\u5B8C\u5168\u7FFB\u8F6C"
-    price: 25
-    maxLevel: 2
-    upgradePrice: 20
-    isOncePerGame: 0
-    isObservable: 0
-  - cardName: "\u6362\u82B1\u8272"
-    description: "\u6307\u5B9A\u4E24\u79CD\u82B1\u8272\u5168\u90E8\u66FF\u6362\uFF08\u542B\u989C\u8272\uFF09"
-    price: 35
-    maxLevel: 2
-    upgradePrice: 25
-    isOncePerGame: 0
-    isObservable: 0
-  - cardName: "\u91CD\u6D17\u724C\u5806"
-    description: "\u5F7B\u5E95\u6D17\u724C\u5269\u4F59\u724C\u5806"
-    price: 40
-    maxLevel: 2
-    upgradePrice: 25
-    isOncePerGame: 0
-    isObservable: 0
-  - cardName: "\u53CC\u91CD\u76EE\u6807"
-    description: "\u540C\u65F6\u8FFD\u8E2A2\u4E2A\u968F\u673A\u76EE\u6807\uFF0C\u5B8C\u6210\u4EFB\u4E00\u5373\u53EF\u8FBE\u6210\uFF08\u4F46\u4E0D\u5F3A\u5236\uFF09"
-    price: 20
-    maxLevel: 1
-    upgradePrice: 0
-    isOncePerGame: 0
-    isObservable: 0
-  - cardName: "\u6362\u76EE\u6807"
-    description: "\u5237\u65B0\u4E3A\u540C\u96BE\u5EA6\u5C42\u53E6\u4E00\u4E2A\u968F\u673A\u724C\u578B"
+    category: "\u6539\u4FEE\u6B63"
+  - cardName: "\u4FEE\u6B63\u4FC3\u9500"
+    description: "\u672C\u5C40\u4FEE\u6B63\u53EA\u6D88\u80175\u7B79\u7801\n\u5347\u7EA7\uFF1A\u672C\u5C40\u4FEE\u6B63\u4E0D\u6D88\u8017\u7B79\u7801"
     price: 10
-    maxLevel: 1
-    upgradePrice: 0
-    isOncePerGame: 0
-    isObservable: 0
-  - cardName: "\u534A\u8D54\u534A\u8D5A"
-    description: "\u7ED3\u7B97\u500D\u7387\xD70.5"
-    price: 15
-    maxLevel: 1
-    upgradePrice: 0
-    isOncePerGame: 0
-    isObservable: 0
-  - cardName: "\u53CC\u500D\u8F93\u8D62"
-    description: "\u7ED3\u7B97\u500D\u7387\xD72.0"
-    price: 25
-    maxLevel: 1
-    upgradePrice: 0
-    isOncePerGame: 0
-    isObservable: 0
-  - cardName: "\u5BB9\u9519\u4E24\u6B21"
-    description: "\xB12\u8BEF\u5DEE\u4E0D\u6263\u4E0D\u52A0"
-    price: 40
-    maxLevel: 1
-    upgradePrice: 0
-    isOncePerGame: 0
-    isObservable: 0
-  - cardName: "\u4E8F\u635F\u5C01\u9876"
-    description: "\u672C\u5C40\u635F\u5931\u4E0A\u9650-40"
-    price: 40
-    maxLevel: 1
-    upgradePrice: 0
-    isOncePerGame: 0
-    isObservable: 0
-  - cardName: "\u514D\u6B7B\u4E00\u6B21"
-    description: "\u81F4\u547D\u4F24\u5BB3\u65F6\u7B79\u7801\u5F3A\u5236\u4FDD\u75591\u70B9\uFF1B\u8D2D\u4E70\u540E\u6C38\u4E0D\u51FA\u73B0"
-    price: 100
-    maxLevel: 1
-    upgradePrice: 0
-    isOncePerGame: 1
-    isObservable: 0
-  - cardName: "\u5168\u62BC"
-    description: "\u53EF\u5728\u4FEE\u6B63\u524D\u6FC0\u6D3B\uFF1B\u6263\u5219\u5F52\u96F6\uFF0C\u8D5A\u5219\xD73\uFF1B\u8D2D\u4E70\u540E\u6C38\u4E0D\u51FA\u73B0"
-    price: 60
-    maxLevel: 1
-    upgradePrice: 0
-    isOncePerGame: 1
-    isObservable: 0
-  - cardName: "\u4FDD\u7559\u731C\u6D4B"
-    description: "\u4FEE\u6B63\u524D\u731C\u6D4B\u88AB\u4FDD\u7559\uFF0C\u7ED3\u7B97\u9009\u8BEF\u5DEE\u66F4\u5C0F\u7684"
-    price: 55
-    maxLevel: 1
-    upgradePrice: 0
-    isOncePerGame: 0
-    isObservable: 0
-  - cardName: "\u4E8C\u6B21\u4FEE\u6B63"
-    description: "\u672C\u5C40\u4FEE\u6B63\u6B21\u6570\u53D8\u4E3A2\u6B21"
-    price: 65
-    maxLevel: 1
-    upgradePrice: 0
-    isOncePerGame: 0
-    isObservable: 0
-  - cardName: "\u6253\u6298\u4FEE\u6B63"
-    description: "\u4FEE\u6B63\u6D88\u8017-10\uFF08\u5373-10\uFF09"
-    price: 20
     maxLevel: 2
-    upgradePrice: 25
+    upgradePrice: 20
     isOncePerGame: 0
-    isObservable: 0
-  - cardName: "\u8D85\u65F6\u4FEE\u6B63"
-    description: "\u7FFB\u8FC7N\u540E\u4ECD\u53EF\u4FEE\u6B63\uFF0C\u6D88\u8017-40"
+    category: "\u6539\u4FEE\u6B63"
+  - cardName: "\u8FD1\u8BEF\u5DEE\u7EA2\u5229"
+    description: "\u672C\u5C40\u8BEF\u5DEE\u4E3A1\u65F6\u989D\u5916\u83B7\u5F9715\u7B79\u7801\n\u5347\u7EA7\uFF1A\u672C\u5C40\u8BEF\u5DEE\u22641\u65F6\u989D\u5916\u83B7\u5F9725\u7B79\u7801"
+    price: 10
+    maxLevel: 2
+    upgradePrice: 20
+    isOncePerGame: 0
+    category: "\u6539\u89C4\u5219"
+  - cardName: "\u65E9\u9E1F\u4F18\u60E0"
+    description: "\u672C\u5C40\u7FFB\u724C\u6570\u226410\u65F6\u8FBE\u6210\u76EE\u6807\uFF0C\u989D\u5916\u83B7\u5F9718\u7B79\u7801\n\u5347\u7EA7\uFF1A\u7FFB\u724C\u6570\u226414\u65F6\u8FBE\u6210\u76EE\u6807\uFF0C\u989D\u5916\u83B7\u5F9724\u7B79\u7801"
+    price: 10
+    maxLevel: 2
+    upgradePrice: 20
+    isOncePerGame: 0
+    category: "\u6539\u89C4\u5219"
+  - cardName: "\u6362\u76EE\u6807"
+    description: "\u76EE\u6807\u66FF\u6362\u4E3A\u540C\u5C42\u7EA7\u968F\u673A2\u4E2A\u76EE\u6807\u4E2D\u76841\u4E2A\uFF08\u81EA\u9009\uFF09\n\u5347\u7EA7\uFF1A\u66FF\u6362\u4E3A\u540C\u5C42\u7EA7\u968F\u673A3\u4E2A\u76EE\u6807\u4E2D\u76841\u4E2A"
+    price: 14
+    maxLevel: 2
+    upgradePrice: 22
+    isOncePerGame: 0
+    category: "\u6539\u89C4\u5219"
+  - cardName: "\u96F6\u8BEF\u5DEE\u7EA2\u5229"
+    description: "\u672C\u5C40\u8BEF\u5DEE\u4E3A0\u65F6\u989D\u5916\u83B7\u5F9730\u7B79\u7801\n\u5347\u7EA7\uFF1A\u672C\u5C40\u8BEF\u5DEE\u4E3A0\u65F6\u989D\u5916\u83B7\u5F9750\u7B79\u7801"
     price: 18
     maxLevel: 2
-    upgradePrice: 25
+    upgradePrice: 30
     isOncePerGame: 0
-    isObservable: 0
+    category: "\u6539\u89C4\u5219"
+  - cardName: "\u7EDD\u5904\u9022\u751F"
+    description: "\u4E00\u6B21\u6027\uFF0C\u672C\u5C40\u5931\u8D25\u6539\u4E3A\u89C6\u4E3A\u5B58\u6D3B\uFF0C\u65E0\u7B79\u7801\u5956\u52B1"
+    price: 28
+    maxLevel: 1
+    upgradePrice: 0
+    isOncePerGame: 1
+    category: "\u6539\u89C4\u5219"
+  - cardName: "\u6D88\u9664\u7279\u6B8A"
+    description: "\u4E00\u6B21\u6027\uFF0C\u6D88\u9664\u5F53\u524D\u7279\u6B8A\u89C4\u5219\u5173\u7684\u7279\u6B8A\u89C4\u5219"
+    price: 25
+    maxLevel: 1
+    upgradePrice: 0
+    isOncePerGame: 1
+    category: "\u6539\u89C4\u5219"
+  - cardName: "\u5BBD\u5BB9+"
+    description: "\u672C\u5C42\u8BEF\u5DEE\u5BB9\u5FCD\u5EA6+1\n\u5347\u7EA7\uFF1A\u672C\u5C42\u8BEF\u5DEE\u5BB9\u5FCD\u5EA6+2"
+    price: 24
+    maxLevel: 2
+    upgradePrice: 44
+    isOncePerGame: 0
+    category: "\u6539\u89C4\u5219"

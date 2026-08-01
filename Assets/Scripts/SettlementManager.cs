@@ -1,16 +1,15 @@
 using UnityEngine;
 
 /// <summary>
-/// 结算管理器 - 根据玩家猜测和实际达成张数计算筹码变动。
-/// 仅负责基础误差结算（查表得出筹码变化），倍率、容错、全押等额外结算效果由 StrategyCardManager 和 GameManager 处理。
+/// 结算管理器 - 根据策划的分层误差容忍度规则进行结算
 /// </summary>
 public class SettlementManager : MonoBehaviour
 {
     public GameConfigSO config;
     [SerializeField] private ChipsManager chipsManager;
+    [SerializeField] private LevelManager levelManager;
 
     private int lastGuessN;
-    private int targetAchievedAt;
     private bool hasGuessed;
 
     public void SetLastGuess(int guessN)
@@ -19,18 +18,36 @@ public class SettlementManager : MonoBehaviour
         hasGuessed = true;
     }
 
-    public void OnTargetAchieved(int achievedAtCardCount)
+    /// <summary>
+    /// 结算：误差≤容忍度则存活，误差=0额外+40
+    /// 返回是否存活
+    /// </summary>
+    public bool Settle(int achievedAtCardCount, int errorToleranceBonus = 0)
     {
-        if (!hasGuessed) return;
-        targetAchievedAt = achievedAtCardCount;
+        if (!hasGuessed) return false;
 
-        int error = Mathf.Abs(lastGuessN - targetAchievedAt);
-        bool isEarly = lastGuessN < targetAchievedAt;
-        int chipChange = config.GetChipChange(error, isEarly);
+        int error = Mathf.Abs(lastGuessN - achievedAtCardCount);
+        int layer = levelManager != null ? levelManager.GetCurrentStageInfo().layer : 1;
+        int baseTolerance = config != null ? config.errorToleranceByLayer[Mathf.Min(layer - 1, 3)] : 4;
+        int tolerance = baseTolerance + errorToleranceBonus;
 
-        chipsManager.AddChips(chipChange);
-        Debug.Log($"结算：误差{error}，{(isEarly ? "猜早" : "猜晚")}，筹码{chipChange:+0;-0}");
+        if (error > tolerance)
+        {
+            Debug.Log($"结算失败：误差{error} > 容忍度{tolerance}");
+            hasGuessed = false;
+            return false;
+        }
+
+        // 误差为0额外+40
+        if (error == 0)
+        {
+            chipsManager.AddChips(40);
+            Debug.Log("完美猜测！额外+40");
+        }
+
+        Debug.Log($"结算成功：误差{error} ≤ 容忍度{tolerance}");
         hasGuessed = false;
+        return true;
     }
 
     public void ResetSettlement()

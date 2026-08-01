@@ -20,151 +20,103 @@ public class TargetHandManager : MonoBehaviour
 
         // ============ 第一层（预期5-10张）============
         allTargetHands.Add(new TargetHand("对子", TargetHand.Tier.Tier1,
-            "2张相同点数",
+            "2张相同点数（累计）",
             cards => HandEvaluator.HasSameRank(cards, 2)));
 
-        allTargetHands.Add(new TargetHand("三连同色", TargetHand.Tier.Tier1,
-            "连续3张相同颜色",
-            cards => HandEvaluator.HasConsecutiveSameColor(cards, 3)));
-
         allTargetHands.Add(new TargetHand("双高牌", TargetHand.Tier.Tier1,
-            "2张点数≥10（10/J/Q/K）",
+            "2张点数≥10（累计）",
             cards => HandEvaluator.HasHighCards(cards, 2)));
 
+        allTargetHands.Add(new TargetHand("颜色交替3连", TargetHand.Tier.Tier1,
+            "连续3张颜色交替（非累计，检查最后3张）",
+            cards => HandEvaluator.HasColorAlternatingLast(cards, 3)));
+
         allTargetHands.Add(new TargetHand("三奇数", TargetHand.Tier.Tier1,
-            "3张奇数牌（A/3/5/7/9）",
+            "3张奇数牌（累计）",
             cards => HandEvaluator.HasOddCards(cards, 3)));
 
-        allTargetHands.Add(new TargetHand("颜色交替", TargetHand.Tier.Tier1,
-            "连续3张颜色交替",
-            cards => HandEvaluator.HasColorAlternating(cards, 3)));
-
-        allTargetHands.Add(new TargetHand("三连偶数", TargetHand.Tier.Tier1,
-            "连续3张偶数牌（2/4/6/8/10/Q）",
-            cards => HandEvaluator.HasConsecutiveEven(cards, 3)));
-
-        allTargetHands.Add(new TargetHand("两连高", TargetHand.Tier.Tier1,
-            "连续2张点数≥9",
-            cards => HandEvaluator.HasConsecutiveHighCards(cards, 2, 9)));
-
         allTargetHands.Add(new TargetHand("点数差≥5", TargetHand.Tier.Tier1,
-            "任意2张牌点数差≥5",
+            "任意2张点数差≥5（累计）",
             cards => HandEvaluator.HasPointDifference(cards, 5)));
 
         allTargetHands.Add(new TargetHand("四色齐", TargetHand.Tier.Tier1,
-            "四种花色各至少一张",
+            "四种花色各至少一张（累计）",
             cards => HandEvaluator.HasAllFourSuits(cards)));
 
         // ============ 第二层（预期8-18张）============
         allTargetHands.Add(new TargetHand("四同花", TargetHand.Tier.Tier2,
-            "4张相同花色",
+            "4张相同花色（累计）",
             cards => HandEvaluator.HasSameSuit(cards, 4)));
 
-        allTargetHands.Add(new TargetHand("人头对", TargetHand.Tier.Tier2,
-            "2张人头牌（J/Q/K）",
-            cards => HandEvaluator.HasFaceCards(cards, 2)));
-
-        allTargetHands.Add(new TargetHand("王牌现身", TargetHand.Tier.Tier2,
-            "翻到任意一张A",
-            cards => HandEvaluator.HasAce(cards)));
-
-        allTargetHands.Add(new TargetHand("国王降临", TargetHand.Tier.Tier2,
-            "翻到任意一张K",
-            cards => HandEvaluator.HasKing(cards)));
-
         allTargetHands.Add(new TargetHand("两对", TargetHand.Tier.Tier2,
-            "两组不同点数的对子",
+            "两组不同点数的对子（累计）",
             cards => HandEvaluator.HasTwoPairs(cards)));
 
-        allTargetHands.Add(new TargetHand("花色交替", TargetHand.Tier.Tier2,
-            "连续4张牌，每张花色不同",
-            cards => HandEvaluator.HasSuitAlternating(cards, 4)));
+        allTargetHands.Add(new TargetHand("人头对", TargetHand.Tier.Tier2,
+            "2张人头牌（J/Q/K，累计）",
+            cards => HandEvaluator.HasFaceCards(cards, 2)));
 
         allTargetHands.Add(new TargetHand("三连升", TargetHand.Tier.Tier2,
-            "3张点数严格递增",
-            cards => HandEvaluator.HasStrictlyIncreasing(cards, 3)));
+            "3张点数严格递增（非累计，检查最后3张）",
+            cards => HandEvaluator.HasStrictlyIncreasingLast(cards, 3)));
 
-        allTargetHands.Add(new TargetHand("同点异色", TargetHand.Tier.Tier2,
-            "同一数字出现红黑两种颜色",
-            cards => HandEvaluator.HasSameRankDifferentColor(cards)));
+        allTargetHands.Add(new TargetHand("王牌现身", TargetHand.Tier.Tier2,
+            "翻到任意一张A（累计）",
+            cards => HandEvaluator.HasAce(cards)));
 
-        allTargetHands.Add(new TargetHand("四十五点", TargetHand.Tier.Tier2,
-            "已翻牌点数之和≥45（A=1, J/Q/K=10）",
-            cards => HandEvaluator.HasTotalPoints(cards, 45)));
+        allTargetHands.Add(new TargetHand("花色交替4连", TargetHand.Tier.Tier2,
+            "连续4张花色各不相同（非累计，检查最后4张）",
+            cards => HandEvaluator.HasSuitAlternatingLast(cards, 4)));
 
         // ============ 第三层（预期18-30张）============
         allTargetHands.Add(new TargetHand("三条", TargetHand.Tier.Tier3,
-            "3张相同点数",
+            "3张相同点数（累计）",
             cards => HandEvaluator.HasSameRank(cards, 3)));
 
-        allTargetHands.Add(new TargetHand("小顺子", TargetHand.Tier.Tier3,
-            "3张点数连续",
-            cards => HandEvaluator.HasConsecutiveRanks(cards, 3)));
-
-        allTargetHands.Add(new TargetHand("花色+奇偶", TargetHand.Tier.Tier3,
-            "3张同花色且同为奇数",
-            cards => HandEvaluator.HasSameSuitAndOdd(cards, 3)));
-
-        allTargetHands.Add(new TargetHand("人头+花色", TargetHand.Tier.Tier3,
-            "2张人头牌且同花色",
-            cards => HandEvaluator.HasFaceCardSameSuit(cards, 2)));
-
         allTargetHands.Add(new TargetHand("五同花", TargetHand.Tier.Tier3,
-            "5张相同花色",
+            "5张相同花色（累计）",
             cards => HandEvaluator.HasSameSuit(cards, 5)));
 
-        allTargetHands.Add(new TargetHand("四连奇", TargetHand.Tier.Tier3,
-            "连续4张奇数牌",
-            cards => HandEvaluator.HasConsecutiveOdd(cards, 4)));
+        allTargetHands.Add(new TargetHand("小顺子", TargetHand.Tier.Tier3,
+            "3张点数连续（累计）",
+            cards => HandEvaluator.HasConsecutiveRanks(cards, 3)));
 
-        allTargetHands.Add(new TargetHand("单花4连", TargetHand.Tier.Tier3,
-            "4张同花色且点数连续",
-            cards => HandEvaluator.HasSameSuitConsecutiveRanks(cards, 4)));
+        allTargetHands.Add(new TargetHand("人头同花", TargetHand.Tier.Tier3,
+            "2张人头牌且同花色（累计）",
+            cards => HandEvaluator.HasFaceCardSameSuit(cards, 2)));
+
+        allTargetHands.Add(new TargetHand("三连奇", TargetHand.Tier.Tier3,
+            "连续3张奇数牌（非累计，检查最后3张）",
+            cards => HandEvaluator.HasConsecutiveOddLast(cards, 3)));
 
         allTargetHands.Add(new TargetHand("A带小", TargetHand.Tier.Tier3,
-            "任意A + 一张点数≤4的牌",
+            "任意A + 一张点数≤4（累计）",
             cards => HandEvaluator.HasAceAndSmall(cards)));
 
-        allTargetHands.Add(new TargetHand("双面人", TargetHand.Tier.Tier3,
-            "J和Q各一张，且同花色",
-            cards => HandEvaluator.HasJackQueenSameSuit(cards)));
-
         // ============ 第四层（预期30-48张）============
-        allTargetHands.Add(new TargetHand("红心女王", TargetHand.Tier.Tier4,
-            "翻到唯一的红心Q",
-            cards => HandEvaluator.HasQueenOfHearts(cards)));
-
         allTargetHands.Add(new TargetHand("葫芦", TargetHand.Tier.Tier4,
-            "3条+1对（累计，且三条和对子点数不同）",
+            "3条+1对，不同点数（累计）",
             cards => HandEvaluator.HasFullHouse(cards)));
 
-        allTargetHands.Add(new TargetHand("全套点数", TargetHand.Tier.Tier4,
-            "全部13种点数各至少一张",
-            cards => HandEvaluator.HasAllRanks(cards)));
-
         allTargetHands.Add(new TargetHand("顺子", TargetHand.Tier.Tier4,
-            "5张点数连续",
+            "5张点数连续（累计）",
             cards => HandEvaluator.HasConsecutiveRanks(cards, 5)));
 
         allTargetHands.Add(new TargetHand("四条", TargetHand.Tier.Tier4,
-            "4张相同点数",
+            "4张相同点数（累计）",
             cards => HandEvaluator.HasSameRank(cards, 4)));
 
         allTargetHands.Add(new TargetHand("同花顺", TargetHand.Tier.Tier4,
-            "5张同花色且点数连续",
+            "5张同花色且点数连续（累计）",
             cards => HandEvaluator.HasSameSuitConsecutiveRanks(cards, 5)));
 
         allTargetHands.Add(new TargetHand("红黑配", TargetHand.Tier.Tier4,
-            "5张红牌+5张黑牌均已出现",
+            "5张红牌+5张黑牌均已出现（累计）",
             cards => HandEvaluator.HasRedBlackBalance(cards)));
 
-        allTargetHands.Add(new TargetHand("花牌全餐", TargetHand.Tier.Tier4,
-            "J/Q/K各至少一张，来自≥3种不同花色",
-            cards => HandEvaluator.HasFaceCardVariety(cards)));
-
-        allTargetHands.Add(new TargetHand("A的四重奏", TargetHand.Tier.Tier4,
-            "四种花色的A各一张全部出现",
-            cards => HandEvaluator.HasAllFourAces(cards)));
+        allTargetHands.Add(new TargetHand("全套点数", TargetHand.Tier.Tier4,
+            "全部13种点数各至少一张（累计）",
+            cards => HandEvaluator.HasAllRanks(cards)));
 
         Debug.Log($"初始化完成，共{allTargetHands.Count}种目标牌型");
     }
@@ -178,7 +130,7 @@ public class TargetHandManager : MonoBehaviour
 
         if (availableTargets.Count == 0)
         {
-            Debug.LogWarning($"第{tier}层所有目标已完成结算，无可用目标");
+            Debug.LogWarning($"第{tier}层所有目标已完成，无可用目标");
             return null;
         }
 
@@ -206,7 +158,7 @@ public class TargetHandManager : MonoBehaviour
 
         if (availableTargets.Count == 0)
         {
-            Debug.LogWarning($"第{(int)currentTarget.tier + 1}层没有可替换的目标（其他目标均已结算）");
+            Debug.LogWarning($"第{(int)currentTarget.tier + 1}层没有可替换的目标");
             return null;
         }
 
@@ -219,31 +171,26 @@ public class TargetHandManager : MonoBehaviour
         return currentTarget;
     }
 
-    public (TargetHand, TargetHand) GetDoubleTargets()
+    /// <summary>
+    /// 换目标策略牌：获取同层级随机N个可选目标
+    /// </summary>
+    public List<TargetHand> GetAlternativeTargets(int count)
     {
-        if (currentTarget == null)
-        {
-            Debug.LogWarning("无当前目标，无法获取双重目标");
-            return (null, null);
-        }
+        if (currentTarget == null) return new List<TargetHand>();
 
-        List<TargetHand> availableForSecond = allTargetHands
+        return allTargetHands
             .Where(t => t.tier == currentTarget.tier
                         && t.handName != currentTarget.handName
                         && !completedTargetNames.Contains(t.handName))
+            .OrderBy(_ => Random.value)
+            .Take(count)
             .ToList();
+    }
 
-        if (availableForSecond.Count == 0)
-        {
-            Debug.LogWarning($"第{(int)currentTarget.tier + 1}层没有其他可用目标作为第二目标");
-            return (currentTarget, null);
-        }
-
-        int randomIndex = Random.Range(0, availableForSecond.Count);
-        TargetHand secondTarget = availableForSecond[randomIndex];
-
-        Debug.Log($"双重目标：{currentTarget.handName} + {secondTarget.handName}");
-        return (currentTarget, secondTarget);
+    public void SetCurrentTarget(TargetHand target)
+    {
+        currentTarget = target;
+        AnnounceTarget();
     }
 
     public void MarkCurrentTargetAsCompleted()
@@ -261,9 +208,6 @@ public class TargetHandManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 根据目标名称标记为已完成（用于双重目标等场景）
-    /// </summary>
     public void MarkTargetAsCompleted(string handName)
     {
         if (!completedTargetNames.Contains(handName))
@@ -278,19 +222,8 @@ public class TargetHandManager : MonoBehaviour
         if (currentTarget != null)
         {
             Debug.Log($"════════════════════════════════");
-
-            if (secondTarget != null)
-            {
-                Debug.Log($"本局为双重目标！");
-                Debug.Log($"目标一：{currentTarget.handName} - {currentTarget.description}");
-                Debug.Log($"目标二：{secondTarget.handName} - {secondTarget.description}");
-            }
-            else
-            {
-                Debug.Log($"本局目标牌型：{currentTarget.handName}");
-                Debug.Log($"达成条件：{currentTarget.description}");
-            }
-
+            Debug.Log($"本局目标牌型：{currentTarget.handName}");
+            Debug.Log($"达成条件：{currentTarget.description}");
             Debug.Log($"层级：第{(int)currentTarget.tier + 1}层");
             Debug.Log($"════════════════════════════════");
         }

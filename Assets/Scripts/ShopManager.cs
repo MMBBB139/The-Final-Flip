@@ -17,7 +17,7 @@ public class ShopManager : MonoBehaviour
 
     public bool RefreshShop()
     {
-        int cost = config != null ? config.refreshCost : 20;
+        int cost = config != null ? config.refreshCost : 5;
         if (chipsManager.GetChips() < cost)
         {
             Debug.LogWarning($"刷新需要{cost}筹码");
@@ -35,26 +35,26 @@ public class ShopManager : MonoBehaviour
         var owned = strategyCardManager.GetOwnedCards();
         var allDefs = strategyCardManager.GetAllDefinitions();
 
+        // 过滤：已满级的牌不出现在商店
         var available = allDefs
             .Where(d => IsCardUseful(d, owned))
             .Where(d => excludeNames == null || !excludeNames.Contains(d.cardName))
             .ToList();
 
-        int slotCount = config != null ? config.shopSlotCount : 3;
-        if (available.Count < slotCount)
-        {
-            available = allDefs.Where(d => IsCardUseful(d, owned)).ToList();
-        }
-
+        int slotCount = config != null ? config.shopSlotCount : 2;
         System.Random rng = new System.Random();
         int count = Mathf.Min(slotCount, available.Count);
         currentShopItems = available.OrderBy(_ => rng.Next()).Take(count).ToList();
     }
 
+    /// <summary>
+    /// 判断牌是否还有用（未拥有或可升级），满级牌不再出现
+    /// </summary>
     private bool IsCardUseful(StrategyCard def, List<StrategyCard> owned)
     {
         var own = owned.Find(c => c.cardName == def.cardName);
-        return own == null || own.IsUpgradable;
+        if (own == null) return true;
+        return own.IsUpgradable;
     }
 
     public bool BuyCard(int slotIndex)
@@ -62,15 +62,17 @@ public class ShopManager : MonoBehaviour
         if (slotIndex < 0 || slotIndex >= currentShopItems.Count) return false;
         var item = currentShopItems[slotIndex];
         var owned = strategyCardManager.GetOwnedCards().Find(c => c.cardName == item.cardName);
+
         if (owned != null)
+        {
             return UpgradeCard(item.cardName);
+        }
         else
+        {
             return PurchaseNewCard(item.cardName, item.price);
+        }
     }
 
-    /// <summary>
-    /// 卖出已拥有的策略牌
-    /// </summary>
     public bool SellCard(string cardName)
     {
         return strategyCardManager.SellCard(cardName);

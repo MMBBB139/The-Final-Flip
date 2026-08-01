@@ -23,7 +23,6 @@ public class GameManager : MonoBehaviour
     private bool isDrawingPhase;
     private bool isGameOver;
     private bool targetAchieved;
-    private bool secondTargetAchieved;
 
     public UnityEvent<string> OnGameMessage;
     public UnityEvent OnWaitingForInput;
@@ -61,7 +60,6 @@ public class GameManager : MonoBehaviour
     private void StartNewStage()
     {
         targetAchieved = false;
-        secondTargetAchieved = false;
 
         levelManager.StartNewStage();
 
@@ -107,15 +105,23 @@ public class GameManager : MonoBehaviour
     public void DrawCard()
     {
         if (!isDrawingPhase || isGameOver) return;
-        if (targetAchieved && !ruleManager.IsDoubleTargetMode()) return;
-        if (targetAchieved && secondTargetAchieved) return;
+        if (targetAchieved) return;
 
+        // 第3层特殊：前25张限制
+        if (ruleManager.IsLayer3LimitReached(deck.GetDrawnCount()))
+        {
+            OnGameMessage?.Invoke($"已翻{deck.GetDrawnCount()}张未达成目标，游戏失败！");
+            HandleStageFailure();
+            return;
+        }
+
+        // 第4层特殊：判断是否该翻褪色牌
         bool isFaded = ruleManager.ShouldDrawFadedCard();
         Card card = deck.DrawTopCard(isFaded);
 
         if (card == null)
         {
-            ForceSettle();
+            HandleStageFailure();
             return;
         }
 
@@ -129,117 +135,120 @@ public class GameManager : MonoBehaviour
     private void CheckTargetAchieved()
     {
         var drawnCards = deck.GetDrawnCards();
+        var target = targetHandManager.GetCurrentTarget();
 
-        if (ruleManager.IsDoubleTargetMode())
+        if (target != null && target.checkCondition(drawnCards))
         {
-            if (!targetAchieved)
-            {
-                var primaryTarget = targetHandManager.GetCurrentTarget();
-                targetAchieved = primaryTarget != null && primaryTarget.checkCondition(drawnCards);
-                if (targetAchieved)
-                {
-                    OnGameMessage?.Invoke($"目标一 [{primaryTarget.handName}] 达成！");
-                }
-            }
-
-            if (!secondTargetAchieved)
-            {
-                var secondTarget = ruleManager.GetSecondTarget();
-                secondTargetAchieved = secondTarget != null && secondTarget.checkCondition(drawnCards);
-                if (secondTargetAchieved)
-                {
-                    OnGameMessage?.Invoke($"目标二 [{secondTarget.handName}] 达成！");
-                }
-            }
-
-            if (targetAchieved && secondTargetAchieved)
-            {
-                OnTargetAchieved?.Invoke();
-                Settle(deck.GetDrawnCount());
-            }
-        }
-        else
-        {
-            if (!targetAchieved)
-            {
-                var target = targetHandManager.GetCurrentTarget();
-                targetAchieved = target != null && target.checkCondition(drawnCards);
-                if (targetAchieved)
-                {
-                    OnTargetAchieved?.Invoke();
-                    Settle(deck.GetDrawnCount());
-                }
-            }
+            targetAchieved = true;
+            OnTargetAchieved?.Invoke();
+            Settle(deck.GetDrawnCount());
         }
     }
 
     private void Settle(int achievedAtCardCount)
     {
         int lastGuess = correctionManager.GetLastGuess();
-        int error = Mathf.Abs(lastGuess - achievedAtCardCount);
-        bool isEarly = lastGuess < achievedAtCardCount;
 
-        int bestError = error;
-        bool bestIsEarly = isEarly;
+        // 保留猜测处理
+        int bestGuess = lastGuess;
         if (strategyCardManager.IsKeepPreviousGuess())
         {
             int prevGuess = strategyCardManager.GetPreviousGuess();
             int prevError = Mathf.Abs(prevGuess - achievedAtCardCount);
-            bool prevIsEarly = prevGuess < achievedAtCardCount;
-            if (prevError < error)
+            int currError = Mathf.Abs(lastGuess - achievedAtCardCount);
+            if (prevError < currError)
             {
-                bestError = prevError;
-                bestIsEarly = prevIsEarly;
+                bestGuess = prevGuess;
                 OnGameMessage?.Invoke($"保留猜测误差更小，使用修正前猜测 N={prevGuess}");
             }
         }
 
-        int chipChange = settlementManager.config != null
-            ? settlementManager.config.GetChipChange(bestError, bestIsEarly)
-            : 0;
+        int finalError = Mathf.Abs(bestGuess - achievedAtCardCount);
+        int layer = levelManager.GetCurrentStageInfo().layer;
+        int baseTolerance = settlementManager.config != null
+            ? settlementManager.config.errorToleranceByLayer[Mathf.Min(layer - 1, 3)] : 4;
+        int toleranceBonus = strategyCardManager.GetErrorToleranceBonus();
+        int tolerance = baseTolerance + toleranceBonus;
 
-        // 1. 应用容错
-        if (strategyCardManager.IsWithinTolerance(bestError))
+        if (finalError > tolerance)
         {
-            chipChange = 0;
-            OnGameMessage?.Invoke($"误差{bestError}在容错范围内，不扣不加");
+            // 绝处逢生检查
+            if (strategyCardManager.HasDeathDefy())
+            {
+                strategyCardManager.ConsumeDeathDefy();
+                chipsManager.SetChips(Mathf.Max(1, chipsManager.GetChips()));
+                OnGameMessage?.Invoke("绝处逢生触发！视为存活，无筹码奖励");
+                EndStage(true);
+                return;
+            }
+
+            OnGameMessage?.Invoke($"游戏失败！误差{finalError} > 容忍度{tolerance}");
+            HandleStageFailure();
+            return;
         }
 
-        // 2. 应用结算倍率
-        float multiplier = strategyCardManager.GetSettlementMultiplier();
-        chipChange = Mathf.RoundToInt(chipChange * multiplier);
+        int extraChips = 0;
 
-        // 3. 应用全押
-        chipChange = strategyCardManager.ApplyAllInSettlement(chipChange);
-
-        // 4. 应用亏损封顶
-        chipChange = strategyCardManager.ApplyLossCap(chipChange);
-
-        // 5. 应用筹码变动
-        chipsManager.AddChips(chipChange);
-
-        string direction = chipChange >= 0 ? "+" : "";
-        OnGameMessage?.Invoke($"结算：猜测N={lastGuess}，实际{achievedAtCardCount}张，误差{bestError}，筹码{direction}{chipChange}");
-
-        // 双重目标模式下，标记副目标完成
-        if (ruleManager.IsDoubleTargetMode())
+        // 误差为0额外+40
+        if (finalError == 0)
         {
-            var secondTarget = ruleManager.GetSecondTarget();
-            if (secondTarget != null)
-                targetHandManager.MarkTargetAsCompleted(secondTarget.handName);
+            int zeroBonus = strategyCardManager.GetZeroErrorBonus();
+            extraChips += 40 + zeroBonus;
+            OnGameMessage?.Invoke($"完美猜测！+{40 + zeroBonus}");
         }
 
-        EndStage();
+        // 近误差红利
+        if (finalError == 1)
+        {
+            int nearBonus = strategyCardManager.GetNearErrorBonus();
+            if (nearBonus > 0)
+            {
+                extraChips += nearBonus;
+                OnGameMessage?.Invoke($"近误差红利 +{nearBonus}");
+            }
+        }
+
+        // 早鸟优惠
+        if (achievedAtCardCount <= strategyCardManager.GetEarlyBirdThreshold())
+        {
+            int earlyBonus = strategyCardManager.GetEarlyBirdBonus();
+            if (earlyBonus > 0)
+            {
+                extraChips += earlyBonus;
+                OnGameMessage?.Invoke($"早鸟优惠 +{earlyBonus}");
+            }
+        }
+
+        // 存活奖励+20
+        chipsManager.AwardSurviveBonus();
+
+        // 应用额外筹码
+        if (extraChips != 0)
+            chipsManager.AddChips(extraChips);
+
+        OnGameMessage?.Invoke($"结算：猜测N={bestGuess}，实际{achievedAtCardCount}张，误差{finalError}，额外筹码{(extraChips >= 0 ? "+" : "")}{extraChips}");
+
+        EndStage(true);
     }
 
-    private void ForceSettle()
+    private void HandleStageFailure()
     {
-        int drawnCount = deck.GetDrawnCount();
-        OnGameMessage?.Invoke("牌堆耗尽！强制结算");
-        Settle(drawnCount);
+        // 绝处逢生检查
+        if (strategyCardManager.HasDeathDefy())
+        {
+            strategyCardManager.ConsumeDeathDefy();
+            chipsManager.SetChips(Mathf.Max(1, chipsManager.GetChips()));
+            OnGameMessage?.Invoke("绝处逢生触发！视为存活");
+            EndStage(true);
+            return;
+        }
+
+        isGameOver = true;
+        isDrawingPhase = false;
+        OnGameMessage?.Invoke("游戏结束");
     }
 
-    private void EndStage()
+    private void EndStage(bool survived)
     {
         isDrawingPhase = false;
 
@@ -249,6 +258,12 @@ public class GameManager : MonoBehaviour
 
         var (layer, stage) = levelManager.GetCurrentStageInfo();
         OnStageEnd?.Invoke($"第{layer}层第{stage}关结束");
+
+        if (!survived)
+        {
+            isGameOver = true;
+            return;
+        }
 
         if (layer == 4 && stage == 3)
         {
@@ -286,8 +301,26 @@ public class GameManager : MonoBehaviour
         return shopManager.RefreshShop();
     }
 
+    /// <summary>
+    /// 恢复褪色牌（第4层特殊规则）
+    /// </summary>
+    public bool RevealFadedCard(int cardIndex)
+    {
+        if (isGameOver) return false;
+        return ruleManager.RevealFadedCard(cardIndex, chipsManager);
+    }
+
     private void OnBankrupt()
     {
+        // 绝处逢生检查
+        if (strategyCardManager.HasDeathDefy())
+        {
+            strategyCardManager.ConsumeDeathDefy();
+            chipsManager.SetChips(1);
+            OnGameMessage?.Invoke("绝处逢生触发！筹码保留1");
+            return;
+        }
+
         isGameOver = true;
         isDrawingPhase = false;
         isWaitingForGuess = false;
@@ -311,9 +344,9 @@ public class GameManager : MonoBehaviour
             shopItems = shopManager != null ? shopManager.GetCurrentShopItems() : new List<StrategyCard>(),
             ownedCards = strategyCardManager != null ? strategyCardManager.GetOwnedCards() : new List<StrategyCard>(),
             currentTarget = targetHandManager != null ? targetHandManager.GetCurrentTarget() : null,
-            secondTarget = ruleManager != null ? ruleManager.GetSecondTarget() : null,
+            secondTarget = null,
             targetAchieved = this.targetAchieved,
-            secondTargetAchieved = this.secondTargetAchieved,
+            secondTargetAchieved = false,
         };
     }
 }

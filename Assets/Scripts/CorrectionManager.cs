@@ -17,6 +17,7 @@ public class CorrectionManager : MonoBehaviour
     private bool extendedWindow;
     private int extendedCorrectionCost;
     private int correctionCostOverride = -1;
+    private int windowExtensionBonus;
 
     public UnityEvent<int, int> OnCorrectionUsed;
     public UnityEvent<string> OnCorrectionFailed;
@@ -43,6 +44,7 @@ public class CorrectionManager : MonoBehaviour
         extendedWindow = false;
         extendedCorrectionCost = 0;
         correctionCostOverride = -1;
+        windowExtensionBonus = 0;
         Debug.Log($"修正系统已重置，可用次数: {remainingCorrections}");
     }
 
@@ -70,7 +72,7 @@ public class CorrectionManager : MonoBehaviour
     public void OnCardRevealed()
     {
         cardsRevealed++;
-        int windowOffset = ruleManager != null ? ruleManager.GetCorrectionWindowOffset() : 0;
+        int windowOffset = (ruleManager != null ? ruleManager.GetCorrectionWindowOffset() : 0) - windowExtensionBonus;
 
         if (extendedWindow) return;
 
@@ -102,7 +104,7 @@ public class CorrectionManager : MonoBehaviour
         else if (correctionCostOverride >= 0)
             cost = correctionCostOverride;
         else
-            cost = config != null ? config.correctionCost : 20;
+            cost = config != null ? config.correctionCost : 10;
 
         if (chipsManager.GetChips() < cost)
         {
@@ -113,7 +115,6 @@ public class CorrectionManager : MonoBehaviour
         chipsManager.AddChips(-cost);
         int oldGuess = lastGuessN;
 
-        // 在修改猜测前触发事件，传出旧值
         OnBeforeGuessChanged?.Invoke(oldGuess);
 
         lastGuessN = newGuessN;
@@ -122,7 +123,7 @@ public class CorrectionManager : MonoBehaviour
 
         if (!extendedWindow)
         {
-            int windowOffset = ruleManager != null ? ruleManager.GetCorrectionWindowOffset() : 0;
+            int windowOffset = (ruleManager != null ? ruleManager.GetCorrectionWindowOffset() : 0) - windowExtensionBonus;
             if (cardsRevealed >= lastGuessN - windowOffset)
             {
                 correctionWindowOpen = false;
@@ -158,6 +159,15 @@ public class CorrectionManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 宽限效果：延长修正窗口N张
+    /// </summary>
+    public void ExtendCorrectionWindowBy(int extraCards)
+    {
+        windowExtensionBonus += extraCards;
+        Debug.Log($"修正窗口延长{extraCards}张，总延长{windowExtensionBonus}张");
+    }
+
     public void SetExtendedCorrectionCost(int cost)
     {
         extendedCorrectionCost = Mathf.Max(0, cost);
@@ -175,12 +185,12 @@ public class CorrectionManager : MonoBehaviour
 
     public CorrectionStatus GetStatus()
     {
-        int offset = ruleManager != null ? ruleManager.GetCorrectionWindowOffset() : 0;
+        int offset = (ruleManager != null ? ruleManager.GetCorrectionWindowOffset() : 0) - windowExtensionBonus;
         return new CorrectionStatus
         {
             currentGuess = lastGuessN,
             remainingCorrections = remainingCorrections,
-            correctionCost = config != null ? config.correctionCost : 20,
+            correctionCost = config != null ? config.correctionCost : 10,
             cardsRevealed = cardsRevealed,
             windowOpen = correctionWindowOpen || extendedWindow,
             canCorrect = CanCorrect() && (extendedWindow || cardsRevealed < lastGuessN - offset)

@@ -1,10 +1,9 @@
-// LevelManager.cs
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 
 /// <summary>
-/// 关卡推进管理器 - 仅负责4层×3关的推进逻辑
+/// 关卡推进管理器 - 负责4层×3关的推进逻辑
 /// </summary>
 public class LevelManager : MonoBehaviour
 {
@@ -14,11 +13,10 @@ public class LevelManager : MonoBehaviour
     [SerializeField] private SettlementManager settlementManager;
 
     [Header("关卡状态")]
-    [SerializeField] private int currentLayer = 1;    // 当前层级（1-4）
-    [SerializeField] private int currentStage = 1;    // 当前关卡序号（1-3）
+    [SerializeField] private int currentLayer = 1;
+    [SerializeField] private int currentStage = 1;
 
-    // 事件
-    public UnityEvent<int, int> OnStageChanged;       // (layer, stage)
+    public UnityEvent<int, int> OnStageChanged;
     public UnityEvent OnGameCompleted;
     public UnityEvent<string> OnGameOver;
 
@@ -34,9 +32,6 @@ public class LevelManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 开始新游戏
-    /// </summary>
     public void StartNewGame()
     {
         currentLayer = 1;
@@ -45,9 +40,6 @@ public class LevelManager : MonoBehaviour
         StartNewStage();
     }
 
-    /// <summary>
-    /// 开始新的一关
-    /// </summary>
     public void StartNewStage()
     {
         Debug.Log($"========== 第{currentLayer}层 第{currentStage}关 ==========");
@@ -59,9 +51,6 @@ public class LevelManager : MonoBehaviour
         OnStageChanged?.Invoke(currentLayer, currentStage);
     }
 
-    /// <summary>
-    /// 完成当前关卡，推进到下一关
-    /// </summary>
     public void CompleteCurrentStage()
     {
         targetHandManager.MarkCurrentTargetAsCompleted();
@@ -88,17 +77,11 @@ public class LevelManager : MonoBehaviour
         StartNewStage();
     }
 
-    /// <summary>
-    /// 获取当前关卡信息
-    /// </summary>
     public (int layer, int stage) GetCurrentStageInfo()
     {
         return (currentLayer, currentStage);
     }
 
-    /// <summary>
-    /// 重置所有进度
-    /// </summary>
     public void ResetAllProgress()
     {
         currentLayer = 1;
