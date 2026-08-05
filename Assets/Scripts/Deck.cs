@@ -50,9 +50,6 @@ public class Deck : MonoBehaviour
         Debug.Log($"洗牌完成，牌堆共{currentDeck.Count}张");
     }
 
-    /// <summary>
-    /// 标记下一张翻牌为褪色牌
-    /// </summary>
     public void MarkNextDrawFaded()
     {
         nextDrawFaded = true;
@@ -83,9 +80,6 @@ public class Deck : MonoBehaviour
         return drawn;
     }
 
-    /// <summary>
-    /// 恢复褪色牌显示
-    /// </summary>
     public void RevealFadedCard(int index)
     {
         if (index >= 0 && index < currentDeck.Count)
@@ -119,9 +113,6 @@ public class Deck : MonoBehaviour
         return currentDeck.GetRange(startIndex, peekCount);
     }
 
-    /// <summary>
-    /// 随机显示未翻过的牌
-    /// </summary>
     public List<Card> PeekRandomUnrevealed(int count)
     {
         if (currentDeck.Count == 0) return new List<Card>();
@@ -150,9 +141,6 @@ public class Deck : MonoBehaviour
         Debug.Log($"删除顶部{removeCount}张，剩余{currentDeck.Count}张");
     }
 
-    /// <summary>
-    /// 顶部N张沉底
-    /// </summary>
     public void MoveTopToBottom(int count)
     {
         int moveCount = Mathf.Min(count, currentDeck.Count);
@@ -202,6 +190,50 @@ public class Deck : MonoBehaviour
             currentDeck[n] = temp;
         }
         Debug.Log($"剩余牌堆已重洗，共{currentDeck.Count}张");
+    }
+
+    /// <summary>
+    /// 从已翻牌中删除指定数量的牌（从末尾开始），翻牌计数自动减少
+    /// </summary>
+    public void RemoveFromDrawn(int count)
+    {
+        int removeCount = Mathf.Min(count, drawnCards.Count);
+        for (int i = 0; i < removeCount; i++)
+        {
+            int lastIndex = drawnCards.Count - 1;
+            Debug.Log($"删除已翻牌: {drawnCards[lastIndex]}");
+            drawnCards.RemoveAt(lastIndex);
+        }
+        Debug.Log($"已翻牌删除{removeCount}张，当前计数: {drawnCards.Count}");
+    }
+
+    /// <summary>
+    /// 将指定数量的已翻牌洗回剩余牌堆（从末尾开始），翻牌计数自动减少
+    /// </summary>
+    public void ReturnDrawnToDeck(int count)
+    {
+        int returnCount = Mathf.Min(count, drawnCards.Count);
+        List<Card> returnCards = drawnCards.GetRange(drawnCards.Count - returnCount, returnCount);
+        drawnCards.RemoveRange(drawnCards.Count - returnCount, returnCount);
+        currentDeck.AddRange(returnCards);
+        ReshuffleRemaining();
+        Debug.Log($"{returnCount}张已翻牌洗回，当前计数: {drawnCards.Count}");
+    }
+
+    /// <summary>
+    /// 复制一张已翻牌并加入剩余牌堆
+    /// </summary>
+    public bool CopyDrawnCard(int index, bool toTop = false)
+    {
+        if (index < 0 || index >= drawnCards.Count) return false;
+        Card original = drawnCards[index];
+        Card copy = new Card(original.suit, original.rank);
+        if (toTop)
+            currentDeck.Insert(0, copy);
+        else
+            currentDeck.Add(copy);
+        Debug.Log($"复制已翻牌: {copy}，置顶={toTop}");
+        return true;
     }
 
     public List<Card> GetDrawnCards()

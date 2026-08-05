@@ -75,9 +75,7 @@ public static class StrategyCardDefinitions
                     break;
 
                 case "偏差大师":
-                    list.Add(new StrategyCard(data, mgr => {
-                        // 被动牌，效果在结算时检查
-                    }, mgr => true));
+                    list.Add(new StrategyCard(data, mgr => { }, mgr => true));
                     break;
 
                 // ===== 第二层 =====
@@ -108,10 +106,16 @@ public static class StrategyCardDefinitions
                         var top = mgr.Deck.PeekTop(count);
                         var bottom = mgr.Deck.PeekBottom(count);
                         mgr.Deck.RemoveTop(count);
+                        var remaining = mgr.Deck.GetRemainingDeck();
+                        // 移除底部的牌
+                        for (int i = 0; i < count && remaining.Count > 0; i++)
+                            remaining.RemoveAt(remaining.Count - 1);
+                        // 底部牌放到顶部
                         for (int i = bottom.Count - 1; i >= 0; i--)
-                            mgr.Deck.GetRemainingDeck().Insert(0, bottom[i]);
+                            remaining.Insert(0, bottom[i]);
+                        // 顶部牌放到底部
                         for (int i = 0; i < top.Count; i++)
-                            mgr.Deck.GetRemainingDeck().Add(top[i]);
+                            remaining.Add(top[i]);
                         Debug.Log($"[交换] 顶部{count}张和底部{count}张互换");
                     }));
                     break;
@@ -156,7 +160,12 @@ public static class StrategyCardDefinitions
                 case "删除":
                     list.Add(new StrategyCard(data, mgr => {
                         int max = mgr.GetCardLevel("删除") == 2 ? 2 : 1;
-                        mgr.RequestDeleteDrawnCards(max);
+                        int actual = Mathf.Min(max, mgr.Deck.GetDrawnCount());
+                        if (actual > 0)
+                        {
+                            mgr.Deck.RemoveFromDrawn(actual);
+                            Debug.Log($"[删除] 已删除{actual}张已翻牌，当前计数: {mgr.Deck.GetDrawnCount()}");
+                        }
                     }));
                     break;
 
@@ -190,29 +199,27 @@ public static class StrategyCardDefinitions
                     break;
 
                 case "稳扎稳打":
-                    list.Add(new StrategyCard(data, mgr => {
-                        // 被动牌，效果在结算时检查
-                    }, mgr => true));
+                    list.Add(new StrategyCard(data, mgr => { }, mgr => true));
                     break;
 
                 case "修正艺术家":
-                    list.Add(new StrategyCard(data, mgr => {
-                        // 被动牌，效果在结算时检查
-                    }, mgr => true));
+                    list.Add(new StrategyCard(data, mgr => { }, mgr => true));
                     break;
 
                 case "速攻":
-                    list.Add(new StrategyCard(data, mgr => {
-                        // 被动牌，效果在结算时检查
-                    }, mgr => true));
+                    list.Add(new StrategyCard(data, mgr => { }, mgr => true));
                     break;
 
                 // ===== 第三层 =====
                 case "回收":
                     list.Add(new StrategyCard(data, mgr => {
                         int max = mgr.GetCardLevel("回收") == 2 ? 2 : 1;
-                        mgr.RequestDeleteDrawnCards(max);
-                        Debug.Log($"[回收] 选择最多{max}张已翻牌洗回（翻牌数-{max}）");
+                        int actual = Mathf.Min(max, mgr.Deck.GetDrawnCount());
+                        if (actual > 0)
+                        {
+                            mgr.Deck.ReturnDrawnToDeck(actual);
+                            Debug.Log($"[回收] 已洗回{actual}张已翻牌，当前计数: {mgr.Deck.GetDrawnCount()}");
+                        }
                     }));
                     break;
 
@@ -263,9 +270,7 @@ public static class StrategyCardDefinitions
                     break;
 
                 case "命运之轮":
-                    list.Add(new StrategyCard(data, mgr => {
-                        // 被动牌，+15容忍度
-                    }, mgr => true));
+                    list.Add(new StrategyCard(data, mgr => { }, mgr => true));
                     break;
 
                 case "天启":
