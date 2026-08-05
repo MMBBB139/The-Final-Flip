@@ -1,8 +1,5 @@
 using UnityEngine;
 
-/// <summary>
-/// 结算管理器 - 根据策划的分层误差容忍度规则进行结算
-/// </summary>
 public class SettlementManager : MonoBehaviour
 {
     public GameConfigSO config;
@@ -18,17 +15,13 @@ public class SettlementManager : MonoBehaviour
         hasGuessed = true;
     }
 
-    /// <summary>
-    /// 结算：误差≤容忍度则存活，误差=0额外+40
-    /// 返回是否存活
-    /// </summary>
     public bool Settle(int achievedAtCardCount, int errorToleranceBonus = 0)
     {
         if (!hasGuessed) return false;
 
         int error = Mathf.Abs(lastGuessN - achievedAtCardCount);
         int layer = levelManager != null ? levelManager.GetCurrentStageInfo().layer : 1;
-        int baseTolerance = config != null ? config.errorToleranceByLayer[Mathf.Min(layer - 1, 3)] : 4;
+        int baseTolerance = config != null ? config.GetErrorTolerance(layer) : 5;
         int tolerance = baseTolerance + errorToleranceBonus;
 
         if (error > tolerance)
@@ -38,11 +31,20 @@ public class SettlementManager : MonoBehaviour
             return false;
         }
 
-        // 误差为0额外+40
+        // 误差=0额外+20
         if (error == 0)
         {
-            chipsManager.AddChips(40);
-            Debug.Log("完美猜测！额外+40");
+            int bonus = config != null ? config.zeroErrorBonus : 20;
+            chipsManager.AddChips(bonus);
+            Debug.Log($"完美猜测！额外+{bonus}");
+        }
+
+        // 误差=1额外+5
+        if (error == 1)
+        {
+            int bonus = config != null ? config.oneErrorBonus : 5;
+            chipsManager.AddChips(bonus);
+            Debug.Log($"误差为1！额外+{bonus}");
         }
 
         Debug.Log($"结算成功：误差{error} ≤ 容忍度{tolerance}");

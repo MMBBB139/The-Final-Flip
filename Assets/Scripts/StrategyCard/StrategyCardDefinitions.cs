@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public static class StrategyCardDefinitions
@@ -10,7 +11,7 @@ public static class StrategyCardDefinitions
         {
             switch (data.cardName)
             {
-                // ===== 信息-看牌 =====
+                // ===== 第一层 =====
                 case "探顶":
                     list.Add(new StrategyCard(data, mgr => {
                         int count = mgr.GetCardLevel("探顶") == 2 ? 5 : 3;
@@ -28,8 +29,10 @@ public static class StrategyCardDefinitions
                         var cards = mgr.Deck.PeekBottom(count);
                         Debug.Log($"[探底] 底部{count}张:");
                         foreach (var c in cards) Debug.Log($"  {c}");
-                        if (mgr.GetCardLevel("探底") == 2 && cards.Count > 0)
+                        if (mgr.GetCardLevel("探底") == 2 && cards.Count > 1)
                             mgr.RequestTopOneFromPeek(cards);
+                        else if (mgr.GetCardLevel("探底") == 1 && cards.Count > 0)
+                            mgr.RequestTopOneFromPeek(new List<Card> { cards[0] });
                     }));
                     break;
 
@@ -42,6 +45,42 @@ public static class StrategyCardDefinitions
                     }));
                     break;
 
+                case "宽限":
+                    list.Add(new StrategyCard(data, mgr => {
+                        int extend = mgr.GetCardLevel("宽限") == 2 ? 4 : 2;
+                        mgr.CorrectionManager.ExtendCorrectionWindowBy(extend);
+                    }, mgr => true));
+                    break;
+
+                case "再修一次":
+                    list.Add(new StrategyCard(data, mgr => {
+                        int extra = mgr.GetCardLevel("再修一次") == 2 ? 2 : 1;
+                        mgr.CorrectionManager.AddCorrectionChances(extra);
+                    }, mgr => true));
+                    break;
+
+                case "早鸟优惠":
+                    list.Add(new StrategyCard(data, mgr => {
+                        int threshold = mgr.GetCardLevel("早鸟优惠") == 2 ? 10 : 10;
+                        int bonus = mgr.GetCardLevel("早鸟优惠") == 2 ? 20 : 12;
+                        mgr.SetEarlyBird(threshold, bonus);
+                    }, mgr => true));
+                    break;
+
+                case "近误差红利":
+                    list.Add(new StrategyCard(data, mgr => {
+                        int bonus = mgr.GetCardLevel("近误差红利") == 2 ? 15 : 8;
+                        mgr.SetNearErrorBonus(bonus);
+                    }, mgr => true));
+                    break;
+
+                case "偏差大师":
+                    list.Add(new StrategyCard(data, mgr => {
+                        // 被动牌，效果在结算时检查
+                    }, mgr => true));
+                    break;
+
+                // ===== 第二层 =====
                 case "点数搜索":
                     list.Add(new StrategyCard(data, mgr => {
                         mgr.RequestRankSearch(mgr.GetCardLevel("点数搜索") == 2);
@@ -54,31 +93,6 @@ public static class StrategyCardDefinitions
                     }));
                     break;
 
-                // ===== 信息-目标检测 =====
-                case "先知":
-                    list.Add(new StrategyCard(data, mgr => {
-                        int count = mgr.GetCardLevel("先知") == 2 ? 8 : 5;
-                        var top = mgr.Deck.PeekTop(count);
-                        var all = new List<Card>(mgr.Deck.GetDrawnCards());
-                        all.AddRange(top);
-                        var target = mgr.TargetHandManager.GetCurrentTarget();
-                        if (target != null)
-                        {
-                            bool canAchieve = target.checkCondition(all);
-                            if (mgr.GetCardLevel("先知") == 2 && canAchieve)
-                            {
-                                int pos = FindFirstAchievePosition(mgr.Deck.GetDrawnCards(), top, target);
-                                Debug.Log($"[先知+] 接下来{count}张可达成，第{pos}张首次达成");
-                            }
-                            else
-                            {
-                                Debug.Log($"[先知] 接下来{count}张{(canAchieve ? "可以" : "无法")}达成");
-                            }
-                        }
-                    }));
-                    break;
-
-                // ===== 改牌-移动 =====
                 case "沉底":
                     list.Add(new StrategyCard(data, mgr => {
                         if (mgr.GetCardLevel("沉底") == 2)
@@ -88,16 +102,57 @@ public static class StrategyCardDefinitions
                     }));
                     break;
 
-                case "置顶":
+                case "交换":
                     list.Add(new StrategyCard(data, mgr => {
-                        if (mgr.GetCardLevel("置顶") == 2)
-                            mgr.RequestTopChoice(3);
-                        else
-                            mgr.Deck.MoveBottomToTop(2);
+                        int count = mgr.GetCardLevel("交换") == 2 ? 3 : 2;
+                        var top = mgr.Deck.PeekTop(count);
+                        var bottom = mgr.Deck.PeekBottom(count);
+                        mgr.Deck.RemoveTop(count);
+                        for (int i = bottom.Count - 1; i >= 0; i--)
+                            mgr.Deck.GetRemainingDeck().Insert(0, bottom[i]);
+                        for (int i = 0; i < top.Count; i++)
+                            mgr.Deck.GetRemainingDeck().Add(top[i]);
+                        Debug.Log($"[交换] 顶部{count}张和底部{count}张互换");
                     }));
                     break;
 
-                // ===== 改牌-删复 =====
+                case "洗牌":
+                    list.Add(new StrategyCard(data, mgr => {
+                        mgr.Deck.ReshuffleRemaining();
+                        if (mgr.GetCardLevel("洗牌") == 2)
+                        {
+                            var top = mgr.Deck.PeekTop(2);
+                            Debug.Log("[洗牌] 免费查看顶部2张:");
+                            foreach (var c in top) Debug.Log($"  {c}");
+                        }
+                    }));
+                    break;
+
+                case "预览":
+                    list.Add(new StrategyCard(data, mgr => {
+                        int count = mgr.GetCardLevel("预览") == 2 ? 5 : 3;
+                        mgr.SetPreview(count);
+                    }, mgr => true));
+                    break;
+
+                case "快进":
+                    list.Add(new StrategyCard(data, mgr => {
+                        int count = mgr.GetCardLevel("快进") == 2 ? 5 : 3;
+                        var cards = mgr.Deck.PeekTop(count);
+                        Debug.Log($"[快进] 连续翻{count}张:");
+                        foreach (var c in cards) Debug.Log($"  {c}");
+                        mgr.OnRequestFastForwardSelect?.Invoke(count, selectedIdx => {
+                            var remaining = mgr.Deck.GetRemainingDeck();
+                            var selected = remaining[selectedIdx];
+                            remaining.RemoveAt(selectedIdx);
+                            remaining.Insert(0, selected);
+                            for (int i = 1; i < count; i++)
+                                mgr.Deck.MoveTopToBottom(1);
+                            Debug.Log($"[快进] 保留{selected}，其余沉底");
+                        });
+                    }));
+                    break;
+
                 case "删除":
                     list.Add(new StrategyCard(data, mgr => {
                         int max = mgr.GetCardLevel("删除") == 2 ? 2 : 1;
@@ -112,44 +167,6 @@ public static class StrategyCardDefinitions
                     }));
                     break;
 
-                // ===== 改修正 =====
-                case "宽限":
-                    list.Add(new StrategyCard(data, mgr => {
-                        int extend = mgr.GetCardLevel("宽限") == 2 ? 4 : 2;
-                        mgr.CorrectionManager.ExtendCorrectionWindowBy(extend);
-                    }));
-                    break;
-
-                case "再修一次":
-                    list.Add(new StrategyCard(data, mgr => {
-                        int extra = mgr.GetCardLevel("再修一次") == 2 ? 2 : 1;
-                        mgr.CorrectionManager.AddCorrectionChances(extra);
-                    }));
-                    break;
-
-                case "修正促销":
-                    list.Add(new StrategyCard(data, mgr => {
-                        int cost = mgr.GetCardLevel("修正促销") == 2 ? 0 : 5;
-                        mgr.CorrectionManager.SetCorrectionCost(cost);
-                    }));
-                    break;
-
-                // ===== 改规则 =====
-                case "近误差红利":
-                    list.Add(new StrategyCard(data, mgr => {
-                        int bonus = mgr.GetCardLevel("近误差红利") == 2 ? 25 : 15;
-                        mgr.SetNearErrorBonus(bonus);
-                    }));
-                    break;
-
-                case "早鸟优惠":
-                    list.Add(new StrategyCard(data, mgr => {
-                        int threshold = mgr.GetCardLevel("早鸟优惠") == 2 ? 14 : 10;
-                        int bonus = mgr.GetCardLevel("早鸟优惠") == 2 ? 24 : 18;
-                        mgr.SetEarlyBird(threshold, bonus);
-                    }));
-                    break;
-
                 case "换目标":
                     list.Add(new StrategyCard(data, mgr => {
                         int options = mgr.GetCardLevel("换目标") == 2 ? 3 : 2;
@@ -160,15 +177,53 @@ public static class StrategyCardDefinitions
 
                 case "零误差红利":
                     list.Add(new StrategyCard(data, mgr => {
-                        int bonus = mgr.GetCardLevel("零误差红利") == 2 ? 50 : 30;
+                        int bonus = mgr.GetCardLevel("零误差红利") == 2 ? 35 : 20;
                         mgr.SetZeroErrorBonus(bonus);
+                    }, mgr => true));
+                    break;
+
+                case "宽容":
+                    list.Add(new StrategyCard(data, mgr => {
+                        int bonus = mgr.GetCardLevel("宽容") == 2 ? 2 : 1;
+                        mgr.AddErrorToleranceBonus(bonus);
+                    }, mgr => true));
+                    break;
+
+                case "稳扎稳打":
+                    list.Add(new StrategyCard(data, mgr => {
+                        // 被动牌，效果在结算时检查
+                    }, mgr => true));
+                    break;
+
+                case "修正艺术家":
+                    list.Add(new StrategyCard(data, mgr => {
+                        // 被动牌，效果在结算时检查
+                    }, mgr => true));
+                    break;
+
+                case "速攻":
+                    list.Add(new StrategyCard(data, mgr => {
+                        // 被动牌，效果在结算时检查
+                    }, mgr => true));
+                    break;
+
+                // ===== 第三层 =====
+                case "回收":
+                    list.Add(new StrategyCard(data, mgr => {
+                        int max = mgr.GetCardLevel("回收") == 2 ? 2 : 1;
+                        mgr.RequestDeleteDrawnCards(max);
+                        Debug.Log($"[回收] 选择最多{max}张已翻牌洗回（翻牌数-{max}）");
                     }));
                     break;
 
-                case "绝处逢生":
+                case "修正促销":
                     list.Add(new StrategyCard(data, mgr => {
-                        mgr.SetDeathDefy(true);
-                    }));
+                        mgr.CorrectionManager.SetCorrectionCost(0);
+                        if (mgr.GetCardLevel("修正促销") == 2)
+                        {
+                            Debug.Log("[修正促销+] 修正免费且使用后额外+3");
+                        }
+                    }, mgr => true));
                     break;
 
                 case "消除特殊":
@@ -177,10 +232,48 @@ public static class StrategyCardDefinitions
                     }));
                     break;
 
-                case "宽容+":
+                case "孤注一掷":
                     list.Add(new StrategyCard(data, mgr => {
-                        int bonus = mgr.GetCardLevel("宽容+") == 2 ? 2 : 1;
-                        mgr.AddErrorToleranceBonus(bonus);
+                        mgr.SetAllInMode(true);
+                        mgr.AddErrorToleranceBonus(-mgr.GetErrorToleranceBonus());
+                        Debug.Log("[孤注一掷] 容忍度=0，误差=0时收入x5");
+                    }));
+                    break;
+
+                case "完美风暴":
+                    list.Add(new StrategyCard(data, mgr => {
+                        float mult = mgr.GetCardLevel("完美风暴") == 2 ? 2f : 1.5f;
+                        mgr.SetPerfectMultiplier(mult);
+                    }, mgr => true));
+                    break;
+
+                // ===== 第四层 =====
+                case "不死鸟":
+                    list.Add(new StrategyCard(data, mgr => {
+                        mgr.SetDeathDefy(true);
+                    }));
+                    break;
+
+                case "十次修正":
+                    list.Add(new StrategyCard(data, mgr => {
+                        mgr.CorrectionManager.SetCorrectionCost(0);
+                        mgr.CorrectionManager.AddCorrectionChances(10);
+                        mgr.CorrectionManager.ExtendCorrectionWindow(true);
+                    }, mgr => true));
+                    break;
+
+                case "命运之轮":
+                    list.Add(new StrategyCard(data, mgr => {
+                        // 被动牌，+15容忍度
+                    }, mgr => true));
+                    break;
+
+                case "天启":
+                    list.Add(new StrategyCard(data, mgr => {
+                        int count = mgr.GetApocalypsePreviewCount();
+                        var cards = mgr.Deck.PeekTop(count);
+                        Debug.Log($"[天启] 查看顶部{count}张:");
+                        foreach (var c in cards) Debug.Log($"  {c}");
                     }));
                     break;
 
@@ -190,17 +283,5 @@ public static class StrategyCardDefinitions
             }
         }
         return list;
-    }
-
-    private static int FindFirstAchievePosition(List<Card> drawn, List<Card> upcoming, TargetHand target)
-    {
-        var sim = new List<Card>(drawn);
-        for (int i = 0; i < upcoming.Count; i++)
-        {
-            sim.Add(upcoming[i]);
-            if (target.checkCondition(sim))
-                return drawn.Count + i + 1;
-        }
-        return -1;
     }
 }

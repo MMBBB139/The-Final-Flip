@@ -7,6 +7,7 @@ public class ShopManager : MonoBehaviour
     [SerializeField] private GameConfigSO config;
     [SerializeField] private StrategyCardManager strategyCardManager;
     [SerializeField] private ChipsManager chipsManager;
+    [SerializeField] private LevelManager levelManager;
 
     private List<StrategyCard> currentShopItems = new List<StrategyCard>();
 
@@ -17,7 +18,7 @@ public class ShopManager : MonoBehaviour
 
     public bool RefreshShop()
     {
-        int cost = config != null ? config.refreshCost : 5;
+        int cost = config != null ? config.refreshCost : 10;
         if (chipsManager.GetChips() < cost)
         {
             Debug.LogWarning($"刷新需要{cost}筹码");
@@ -33,28 +34,40 @@ public class ShopManager : MonoBehaviour
     {
         currentShopItems.Clear();
         var owned = strategyCardManager.GetOwnedCards();
-        var allDefs = strategyCardManager.GetAllDefinitions();
+        var layer = levelManager != null ? levelManager.GetCurrentStageInfo().layer : 1;
 
-        // 过滤：已满级的牌不出现在商店
-        var available = allDefs
-            .Where(d => IsCardUseful(d, owned))
+        // 按层级解锁牌池
+        var available = strategyCardManager.GetDefinitionsByLayer(layer)
+            .Where(d => !strategyCardManager.HasCard(d.cardName))
             .Where(d => excludeNames == null || !excludeNames.Contains(d.cardName))
             .ToList();
 
         int slotCount = config != null ? config.shopSlotCount : 2;
         System.Random rng = new System.Random();
-        int count = Mathf.Min(slotCount, available.Count);
-        currentShopItems = available.OrderBy(_ => rng.Next()).Take(count).ToList();
-    }
 
-    /// <summary>
-    /// 判断牌是否还有用（未拥有或可升级），满级牌不再出现
-    /// </summary>
-    private bool IsCardUseful(StrategyCard def, List<StrategyCard> owned)
-    {
-        var own = owned.Find(c => c.cardName == def.cardName);
-        if (own == null) return true;
-        return own.IsUpgradable;
+        if (available.Count == 0)
+        {
+            Debug.LogWarning("无可用的策略牌");
+            return;
+        }
+
+        // 刚进入新层级时，第一张必定是新解锁的牌
+        if (levelManager != null && levelManager.IsJustEnteredNewLayer())
+        {
+            var newCards = strategyCardManager.GetNewDefinitionsForLayer(layer)
+                .Where(d => !strategyCardManager.HasCard(d.cardName))
+                .ToList();
+            if (newCards.Count > 0)
+            {
+                var guaranteed = newCards[rng.Next(newCards.Count)];
+                currentShopItems.Add(guaranteed);
+                available.RemoveAll(d => d.cardName == guaranteed.cardName);
+                slotCount--;
+            }
+        }
+
+        int count = Mathf.Min(slotCount, available.Count);
+        currentShopItems.AddRange(available.OrderBy(_ => rng.Next()).Take(count));
     }
 
     public bool BuyCard(int slotIndex)

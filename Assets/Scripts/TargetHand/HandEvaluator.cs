@@ -2,13 +2,8 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-/// <summary>
-/// 牌型检测静态工具类，提供所有24种目标牌型的判断逻辑
-/// </summary>
 public static class HandEvaluator
 {
-    // ============ 基础辅助方法 ============
-
     public static int GetRankValue(Card.Rank rank) => (int)rank;
 
     public static int GetPointValue(Card.Rank rank) => rank >= Card.Rank.Jack ? 10 : (int)rank;
@@ -20,91 +15,21 @@ public static class HandEvaluator
     public static bool IsFaceCard(Card.Rank rank) => rank >= Card.Rank.Jack;
 
 
-    // ============ 第1层检测（预期5-10张）============
+    // ============ 通用累计检测 ============
 
     public static bool HasSameRank(List<Card> cards, int count)
     {
         return cards.GroupBy(c => c.rank).Any(g => g.Count() >= count);
     }
 
-    public static bool HasConsecutiveSameColor(List<Card> cards, int count)
+    public static bool HasSameSuit(List<Card> cards, int count)
     {
-        for (int i = 0; i <= cards.Count - count; i++)
-        {
-            bool sameColor = true;
-            Card.CardColor firstColor = cards[i].color;
-            for (int j = 1; j < count; j++)
-            {
-                if (cards[i + j].color != firstColor)
-                {
-                    sameColor = false;
-                    break;
-                }
-            }
-            if (sameColor) return true;
-        }
-        return false;
-    }
-
-    public static bool HasHighCards(List<Card> cards, int count)
-    {
-        return cards.Count(c => GetRankValue(c.rank) >= 10) >= count;
+        return cards.GroupBy(c => c.suit).Any(g => g.Count() >= count);
     }
 
     public static bool HasOddCards(List<Card> cards, int count)
     {
         return cards.Count(c => IsOdd(c.rank)) >= count;
-    }
-
-    /// <summary>
-    /// 检测序列中是否有连续count张颜色交替（用于整体判断）
-    /// </summary>
-    public static bool HasColorAlternating(List<Card> cards, int count)
-    {
-        for (int i = 0; i <= cards.Count - count; i++)
-        {
-            bool alternating = true;
-            for (int j = 0; j < count - 1; j++)
-            {
-                if (cards[i + j].color == cards[i + j + 1].color)
-                {
-                    alternating = false;
-                    break;
-                }
-            }
-            if (alternating) return true;
-        }
-        return false;
-    }
-
-    /// <summary>
-    /// 检测翻牌序列最后count张是否颜色交替（非累计）
-    /// </summary>
-    public static bool HasColorAlternatingLast(List<Card> cards, int count)
-    {
-        if (cards.Count < count) return false;
-        return HasColorAlternating(cards.GetRange(cards.Count - count, count), count);
-    }
-
-    public static bool HasPointDifference(List<Card> cards, int diff)
-    {
-        if (cards.Count < 2) return false;
-        int maxRank = cards.Max(c => GetRankValue(c.rank));
-        int minRank = cards.Min(c => GetRankValue(c.rank));
-        return maxRank - minRank >= diff;
-    }
-
-    public static bool HasAllFourSuits(List<Card> cards)
-    {
-        return cards.Select(c => c.suit).Distinct().Count() >= 4;
-    }
-
-
-    // ============ 第2层检测（预期8-18张）============
-
-    public static bool HasSameSuit(List<Card> cards, int count)
-    {
-        return cards.GroupBy(c => c.suit).Any(g => g.Count() >= count);
     }
 
     public static bool HasFaceCards(List<Card> cards, int count)
@@ -117,65 +42,20 @@ public static class HandEvaluator
         return cards.Any(c => c.rank == Card.Rank.Ace);
     }
 
+    public static bool HasAllFourSuits(List<Card> cards)
+    {
+        return cards.Select(c => c.suit).Distinct().Count() >= 4;
+    }
+
     public static bool HasTwoPairs(List<Card> cards)
     {
         return cards.GroupBy(c => c.rank).Count(g => g.Count() >= 2) >= 2;
     }
 
-    /// <summary>
-    /// 检测序列中是否有连续count张花色各不相同
-    /// </summary>
-    public static bool HasSuitAlternating(List<Card> cards, int count)
+    public static bool HasAllRanks(List<Card> cards)
     {
-        for (int i = 0; i <= cards.Count - count; i++)
-        {
-            int distinctSuits = cards.Skip(i).Take(count).Select(c => c.suit).Distinct().Count();
-            if (distinctSuits == count) return true;
-        }
-        return false;
+        return cards.Select(c => c.rank).Distinct().Count() >= 13;
     }
-
-    /// <summary>
-    /// 检测翻牌序列最后count张是否花色各不相同（非累计）
-    /// </summary>
-    public static bool HasSuitAlternatingLast(List<Card> cards, int count)
-    {
-        if (cards.Count < count) return false;
-        return HasSuitAlternating(cards.GetRange(cards.Count - count, count), count);
-    }
-
-    /// <summary>
-    /// 检测序列中是否有count张点数严格递增
-    /// </summary>
-    public static bool HasStrictlyIncreasing(List<Card> cards, int count)
-    {
-        for (int i = 0; i <= cards.Count - count; i++)
-        {
-            bool increasing = true;
-            for (int j = 0; j < count - 1; j++)
-            {
-                if (GetRankValue(cards[i + j].rank) >= GetRankValue(cards[i + j + 1].rank))
-                {
-                    increasing = false;
-                    break;
-                }
-            }
-            if (increasing) return true;
-        }
-        return false;
-    }
-
-    /// <summary>
-    /// 检测翻牌序列最后count张是否严格递增（非累计）
-    /// </summary>
-    public static bool HasStrictlyIncreasingLast(List<Card> cards, int count)
-    {
-        if (cards.Count < count) return false;
-        return HasStrictlyIncreasing(cards.GetRange(cards.Count - count, count), count);
-    }
-
-
-    // ============ 第3层检测（预期18-30张）============
 
     public static bool HasConsecutiveRanks(List<Card> cards, int count)
     {
@@ -203,19 +83,6 @@ public static class HandEvaluator
             .Any(g => g.Count() >= count);
     }
 
-    /// <summary>
-    /// 检测翻牌序列最后count张是否连续奇数（非累计）
-    /// </summary>
-    public static bool HasConsecutiveOddLast(List<Card> cards, int count)
-    {
-        if (cards.Count < count) return false;
-        for (int i = cards.Count - count; i < cards.Count; i++)
-        {
-            if (!IsOdd(cards[i].rank)) return false;
-        }
-        return true;
-    }
-
     public static bool HasSameSuitConsecutiveRanks(List<Card> cards, int count)
     {
         foreach (var suitGroup in cards.GroupBy(c => c.suit))
@@ -238,16 +105,6 @@ public static class HandEvaluator
         return false;
     }
 
-    public static bool HasAceAndSmall(List<Card> cards)
-    {
-        bool hasAce = cards.Any(c => c.rank == Card.Rank.Ace);
-        bool hasSmall = cards.Any(c => GetRankValue(c.rank) <= 4 && c.rank != Card.Rank.Ace);
-        return hasAce && hasSmall;
-    }
-
-
-    // ============ 第4层检测（预期30-48张）============
-
     public static bool HasFullHouse(List<Card> cards)
     {
         var groups = cards.GroupBy(c => c.rank).ToList();
@@ -256,15 +113,76 @@ public static class HandEvaluator
         return groups.Any(g => g.Key != threeGroup.Key && g.Count() >= 2);
     }
 
-    public static bool HasAllRanks(List<Card> cards)
+
+    // ============ 新增检测方法 ============
+
+    /// <summary>累计翻出指定数量点数≤maxRank的牌</summary>
+    public static bool HasCardsRankAtMost(List<Card> cards, int count, int maxRank)
     {
-        return cards.Select(c => c.rank).Distinct().Count() >= 13;
+        return cards.Count(c => GetRankValue(c.rank) <= maxRank) >= count;
     }
 
-    public static bool HasRedBlackBalance(List<Card> cards)
+    /// <summary>红牌≥redCount且黑牌≥blackCount</summary>
+    public static bool HasRedBlackBalance(List<Card> cards, int redCount, int blackCount)
     {
-        int redCount = cards.Count(c => c.color == Card.CardColor.Red);
-        int blackCount = cards.Count(c => c.color == Card.CardColor.Black);
-        return redCount >= 5 && blackCount >= 5;
+        int red = cards.Count(c => c.color == Card.CardColor.Red);
+        int black = cards.Count(c => c.color == Card.CardColor.Black);
+        return red >= redCount && black >= blackCount;
+    }
+
+    /// <summary>累计翻出count张点数连续的偶数牌</summary>
+    public static bool HasConsecutiveEvenRanks(List<Card> cards, int count)
+    {
+        var evenRanks = cards.Where(c => IsEven(c.rank))
+            .Select(c => GetRankValue(c.rank))
+            .Distinct()
+            .OrderBy(r => r)
+            .ToList();
+
+        for (int i = 0; i <= evenRanks.Count - count; i++)
+        {
+            bool consecutive = true;
+            for (int j = 0; j < count - 1; j++)
+            {
+                if (evenRanks[i + j] + 2 != evenRanks[i + j + 1])
+                {
+                    consecutive = false;
+                    break;
+                }
+            }
+            if (consecutive) return true;
+        }
+        return false;
+    }
+
+    /// <summary>四种花色每种至少minCount张</summary>
+    public static bool HasAllSuitsCount(List<Card> cards, int minCount)
+    {
+        var suitCounts = cards.GroupBy(c => c.suit).ToDictionary(g => g.Key, g => g.Count());
+        foreach (Card.Suit suit in System.Enum.GetValues(typeof(Card.Suit)))
+        {
+            if (!suitCounts.ContainsKey(suit) || suitCounts[suit] < minCount)
+                return false;
+        }
+        return true;
+    }
+
+    /// <summary>皇家同花顺：同花色的10/J/Q/K/A各一张</summary>
+    public static bool HasRoyalFlush(List<Card> cards)
+    {
+        var royalRanks = new HashSet<int> { 10, 11, 12, 13, 1 }; // 10, J, Q, K, A
+        foreach (var suitGroup in cards.GroupBy(c => c.suit))
+        {
+            var ranks = suitGroup.Select(c => GetRankValue(c.rank)).ToHashSet();
+            if (royalRanks.All(r => ranks.Contains(r)))
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>计数检测通用方法：某种条件的牌达到count张</summary>
+    public static bool HasCountByCondition(List<Card> cards, int count, System.Func<Card, bool> condition)
+    {
+        return cards.Count(condition) >= count;
     }
 }

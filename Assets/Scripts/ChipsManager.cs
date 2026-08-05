@@ -50,14 +50,11 @@ public class ChipsManager : MonoBehaviour
         OnChipsChanged?.Invoke(currentChips);
     }
 
-    /// <summary>
-    /// 存活奖励：每局结束如果玩家存活，固定+20
-    /// </summary>
     public void AwardSurviveBonus()
     {
         if (currentChips > 0)
         {
-            int bonus = config != null ? config.surviveReward : 20;
+            int bonus = config != null ? config.surviveReward : 10;
             AddChips(bonus);
             Debug.Log($"存活奖励 +{bonus}");
         }

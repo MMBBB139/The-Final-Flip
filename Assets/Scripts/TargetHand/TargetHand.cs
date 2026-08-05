@@ -15,13 +15,15 @@ public class TargetHand
     public string handName;
     public Tier tier;
     public string description;
+    public int expectedDraws;
     public Func<List<Card>, bool> checkCondition;
 
-    public TargetHand(string name, Tier tier, string desc, Func<List<Card>, bool> condition)
+    public TargetHand(string name, Tier tier, string desc, int expectedDraws, Func<List<Card>, bool> condition)
     {
         handName = name;
         this.tier = tier;
         description = desc;
+        this.expectedDraws = expectedDraws;
         checkCondition = condition;
     }
 }
