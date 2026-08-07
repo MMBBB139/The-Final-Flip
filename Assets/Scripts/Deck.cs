@@ -159,6 +159,57 @@ public class Deck : MonoBehaviour
         Debug.Log($"底部{moveCount}张移至顶部");
     }
 
+    public void SinkCard(int index)
+    {
+        if (index < 0 || index >= currentDeck.Count) return;
+        var card = currentDeck[index];
+        currentDeck.RemoveAt(index);
+        currentDeck.Add(card);
+    }
+
+    public void TopCard(int index)
+    {
+        if (index < 0 || index >= currentDeck.Count) return;
+        var card = currentDeck[index];
+        currentDeck.RemoveAt(index);
+        currentDeck.Insert(0, card);
+    }
+
+    public int FindCardIndex(Card card)
+    {
+        for (int i = 0; i < currentDeck.Count; i++)
+        {
+            if (currentDeck[i].suit == card.suit && currentDeck[i].rank == card.rank)
+                return i;
+        }
+        return -1;
+    }
+
+    public void SwapTopAndBottom(int count)
+    {
+        int actual = Mathf.Min(count, currentDeck.Count / 2);
+        var top = currentDeck.GetRange(0, actual);
+        var bottom = currentDeck.GetRange(currentDeck.Count - actual, actual);
+        currentDeck.RemoveRange(0, actual);
+        currentDeck.RemoveRange(currentDeck.Count - actual, actual);
+        currentDeck.InsertRange(0, bottom);
+        currentDeck.AddRange(top);
+    }
+
+    public void FastForward(int count, int keepIndex)
+    {
+        if (keepIndex < 0 || keepIndex >= count || count > currentDeck.Count) return;
+        var kept = currentDeck[keepIndex];
+        var others = new List<Card>();
+        for (int i = 0; i < count; i++)
+        {
+            if (i != keepIndex) others.Add(currentDeck[i]);
+        }
+        currentDeck.RemoveRange(0, count);
+        currentDeck.Insert(0, kept);
+        currentDeck.AddRange(others);
+    }
+
     public void SplitAndSwap()
     {
         int mid = currentDeck.Count / 2;
@@ -192,9 +243,6 @@ public class Deck : MonoBehaviour
         Debug.Log($"剩余牌堆已重洗，共{currentDeck.Count}张");
     }
 
-    /// <summary>
-    /// 从已翻牌中删除指定数量的牌（从末尾开始），翻牌计数自动减少
-    /// </summary>
     public void RemoveFromDrawn(int count)
     {
         int removeCount = Mathf.Min(count, drawnCards.Count);
@@ -207,9 +255,6 @@ public class Deck : MonoBehaviour
         Debug.Log($"已翻牌删除{removeCount}张，当前计数: {drawnCards.Count}");
     }
 
-    /// <summary>
-    /// 将指定数量的已翻牌洗回剩余牌堆（从末尾开始），翻牌计数自动减少
-    /// </summary>
     public void ReturnDrawnToDeck(int count)
     {
         int returnCount = Mathf.Min(count, drawnCards.Count);
@@ -220,9 +265,6 @@ public class Deck : MonoBehaviour
         Debug.Log($"{returnCount}张已翻牌洗回，当前计数: {drawnCards.Count}");
     }
 
-    /// <summary>
-    /// 复制一张已翻牌并加入剩余牌堆
-    /// </summary>
     public bool CopyDrawnCard(int index, bool toTop = false)
     {
         if (index < 0 || index >= drawnCards.Count) return false;

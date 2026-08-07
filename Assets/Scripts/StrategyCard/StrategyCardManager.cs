@@ -15,7 +15,6 @@ public class StrategyCardManager : MonoBehaviour
     private List<StrategyCard> allDefinitions;
     private StrategyCardData[] allData;
 
-    // 改规则被动效果状态
     private int nearErrorBonus;
     private int earlyBirdThreshold = int.MaxValue;
     private int earlyBirdBonus;
@@ -24,12 +23,9 @@ public class StrategyCardManager : MonoBehaviour
     private int errorToleranceBonus;
     private bool allInMode;
     private float perfectMultiplier = 1f;
-    private int freeCorrections;
 
-    // 成长型牌的累计数据（cardName -> 累计值）
     private Dictionary<string, int> accumulatedValues = new Dictionary<string, int>();
 
-    // 预览相关
     private bool previewEnabled;
     private int previewCount;
     private List<Card> previewCards = new List<Card>();
@@ -41,16 +37,8 @@ public class StrategyCardManager : MonoBehaviour
     public RuleManager RuleManager => ruleManager;
     public List<Card> PreviewCards => previewCards;
 
-    public System.Action<List<Card>> OnRequestSinkOneFromPeek;
-    public System.Action<List<Card>> OnRequestTopOneFromPeek;
-    public System.Action<int> OnRequestSinkChoice;
-    public System.Action<int> OnRequestTopChoice;
-    public System.Action<int> OnRequestDeleteDrawnCards;
-    public System.Action<bool> OnRequestCopyDrawnCard;
-    public System.Action<bool> OnRequestRankSearch;
-    public System.Action<bool> OnRequestSuitSearch;
-    public System.Action<List<TargetHand>> OnRequestTargetChoice;
-    public System.Action<int, System.Action<int>> OnRequestFastForwardSelect;
+    public System.Action<string, string> OnEffectTextUpdate;
+    public System.Action<string, List<string>, System.Action<int>, System.Action> OnRequestSelection;
     public System.Action OnPreviewTriggered;
 
     void Awake()
@@ -73,17 +61,11 @@ public class StrategyCardManager : MonoBehaviour
         return null;
     }
 
-    /// <summary>
-    /// 获取指定层级解锁的所有策略牌定义
-    /// </summary>
     public List<StrategyCard> GetDefinitionsByLayer(int layer)
     {
         return allDefinitions.FindAll(d => d.unlockLayer <= layer && !d.isOncePerGame);
     }
 
-    /// <summary>
-    /// 获取指定层级新解锁的牌（之前层级没有的）
-    /// </summary>
     public List<StrategyCard> GetNewDefinitionsForLayer(int layer)
     {
         return allDefinitions.FindAll(d => d.unlockLayer == layer);
@@ -109,7 +91,7 @@ public class StrategyCardManager : MonoBehaviour
             newCard.accumulatedValue = accumulatedValues[cardName];
 
         ownedCards.Add(newCard);
-        Debug.Log($"获得策略牌: {cardName}");
+        UpdateEffectText(cardName);
         return true;
     }
 
@@ -126,7 +108,7 @@ public class StrategyCardManager : MonoBehaviour
         if (newDef != null)
             card.executeEffect = newDef.executeEffect;
 
-        Debug.Log($"{cardName}升级至Lv.{card.currentLevel}");
+        UpdateEffectText(cardName);
         return true;
     }
 
@@ -137,12 +119,10 @@ public class StrategyCardManager : MonoBehaviour
         int sellPrice = card.GetSellPrice();
         ownedCards.Remove(card);
 
-        // 成长型牌卖掉后清零累计
         if (accumulatedValues.ContainsKey(cardName))
             accumulatedValues.Remove(cardName);
 
         chipsManager.AddChips(sellPrice);
-        Debug.Log($"卖出{cardName}，回收{sellPrice}筹码");
         return true;
     }
 
@@ -174,12 +154,8 @@ public class StrategyCardManager : MonoBehaviour
 
     public List<StrategyCard> GetOwnedCards() => new List<StrategyCard>(ownedCards);
 
-    /// <summary>
-    /// 检查是否拥有某张牌
-    /// </summary>
     public bool HasCard(string cardName) => ownedCards.Exists(c => c.cardName == cardName);
 
-    // 被动效果查询
     public int GetNearErrorBonus() => HasCard("近误差红利") ? nearErrorBonus : 0;
     public int GetEarlyBirdThreshold() => HasCard("早鸟优惠") ? earlyBirdThreshold : int.MaxValue;
     public int GetEarlyBirdBonus() => HasCard("早鸟优惠") ? earlyBirdBonus : 0;
@@ -189,26 +165,20 @@ public class StrategyCardManager : MonoBehaviour
     public float GetPerfectMultiplier() => HasCard("完美风暴") ? perfectMultiplier : 1f;
     public bool IsAllInMode() => allInMode;
 
-    // 被动效果设置
-    public void SetNearErrorBonus(int b) => nearErrorBonus = b;
-    public void SetEarlyBird(int threshold, int bonus) { earlyBirdThreshold = threshold; earlyBirdBonus = bonus; }
-    public void SetZeroErrorBonus(int b) => zeroErrorBonus = b;
+    public void SetNearErrorBonus(int b) { nearErrorBonus = b; UpdateEffectText("近误差红利"); }
+    public void SetEarlyBird(int threshold, int bonus) { earlyBirdThreshold = threshold; earlyBirdBonus = bonus; UpdateEffectText("早鸟优惠"); }
+    public void SetZeroErrorBonus(int b) { zeroErrorBonus = b; UpdateEffectText("零误差红利"); }
     public void SetDeathDefy(bool v) => deathDefy = v;
     public void ConsumeDeathDefy() => deathDefy = false;
-    public void AddErrorToleranceBonus(int b) => errorToleranceBonus += b;
+    public void AddErrorToleranceBonus(int b) { errorToleranceBonus += b; UpdateEffectText("宽容"); }
     public void SetAllInMode(bool v) => allInMode = v;
-    public void SetPerfectMultiplier(float m) => perfectMultiplier = m;
-    public void SetFreeCorrections(int count) => freeCorrections = count;
+    public void SetPerfectMultiplier(float m) { perfectMultiplier = m; UpdateEffectText("完美风暴"); }
 
-    // 预览相关
     public void SetPreview(int count) { previewEnabled = true; previewCount = count; }
     public bool IsPreviewEnabled() => previewEnabled;
     public int GetPreviewCount() => previewCount;
     public void ClearPreview() { previewEnabled = false; previewCards.Clear(); }
 
-    /// <summary>
-    /// 执行预览：翻顶部N张牌检查是否直接达成
-    /// </summary>
     public bool ExecutePreview()
     {
         if (!previewEnabled) return false;
@@ -217,12 +187,10 @@ public class StrategyCardManager : MonoBehaviour
         var simCards = new List<Card>(deck.GetDrawnCards());
         simCards.AddRange(previewCards);
         bool hits = targetHandManager.CheckTarget(simCards);
-        if (hits)
-            OnPreviewTriggered?.Invoke();
+        if (hits) OnPreviewTriggered?.Invoke();
         return hits;
     }
 
-    // 成长型牌的累计值管理
     public int GetAccumulatedValue(string cardName)
     {
         if (accumulatedValues.ContainsKey(cardName))
@@ -235,15 +203,16 @@ public class StrategyCardManager : MonoBehaviour
         if (!accumulatedValues.ContainsKey(cardName))
             accumulatedValues[cardName] = 0;
         accumulatedValues[cardName] += amount;
+        UpdateEffectText(cardName);
     }
 
     public void ResetAccumulatedValue(string cardName)
     {
         if (accumulatedValues.ContainsKey(cardName))
             accumulatedValues.Remove(cardName);
+        UpdateEffectText(cardName);
     }
 
-    // 成长型效果查询
     public int GetDeviationMasterBonus()
     {
         var card = ownedCards.Find(c => c.cardName == "偏差大师");
@@ -276,26 +245,86 @@ public class StrategyCardManager : MonoBehaviour
         return card.accumulatedValue * perTrigger;
     }
 
-    // 十次修正
     public bool HasTenCorrections() => HasCard("十次修正");
-
-    // 命运之轮
     public int GetFateWheelBonus() => HasCard("命运之轮") ? 15 : 0;
-
-    // 天启
     public bool HasApocalypse() => HasCard("天启");
     public int GetApocalypsePreviewCount() => 44;
 
-    // 交互请求
-    public void RequestSinkOneFromPeek(List<Card> cards) => OnRequestSinkOneFromPeek?.Invoke(cards);
-    public void RequestTopOneFromPeek(List<Card> cards) => OnRequestTopOneFromPeek?.Invoke(cards);
-    public void RequestSinkChoice(int count) => OnRequestSinkChoice?.Invoke(count);
-    public void RequestTopChoice(int count) => OnRequestTopChoice?.Invoke(count);
-    public void RequestDeleteDrawnCards(int max) => OnRequestDeleteDrawnCards?.Invoke(max);
-    public void RequestCopyDrawnCard(bool toTop) => OnRequestCopyDrawnCard?.Invoke(toTop);
-    public void RequestRankSearch(bool showAll) => OnRequestRankSearch?.Invoke(showAll);
-    public void RequestSuitSearch(bool showAll) => OnRequestSuitSearch?.Invoke(showAll);
-    public void RequestTargetChoice(List<TargetHand> options) => OnRequestTargetChoice?.Invoke(options);
+    public void RequestSelection(string prompt, List<string> options, System.Action<int> callback, System.Action onCancel = null)
+    {
+        OnRequestSelection?.Invoke(prompt, options, callback, onCancel);
+    }
+
+    private void UpdateEffectText(string cardName)
+    {
+        var card = ownedCards.Find(c => c.cardName == cardName);
+        if (card == null) return;
+        string text = BuildEffectText(card);
+        OnEffectTextUpdate?.Invoke(cardName, text);
+    }
+
+    private string BuildEffectText(StrategyCard card)
+    {
+        int lv = card.currentLevel;
+
+        switch (card.cardName)
+        {
+            case "偏差大师":
+                int devBase = lv >= 2 ? 25 : 15;
+                int devPer = lv >= 2 ? 8 : 5;
+                int devTotal = devBase + card.accumulatedValue * devPer;
+                return $"误差≥3且存活，额外+{devTotal}。永久累计+{devPer}/次";
+            case "稳扎稳打":
+                int steadyBase = lv >= 2 ? 12 : 8;
+                int steadyPer = lv >= 2 ? 6 : 4;
+                int steadyTotal = steadyBase + card.accumulatedValue * steadyPer;
+                return $"误差≤2，额外+{steadyTotal}。连续触发每局叠加+{steadyPer}，中断重置";
+            case "修正艺术家":
+                int artBase = lv >= 2 ? 30 : 20;
+                int artPer = lv >= 2 ? 8 : 5;
+                int artTotal = artBase + card.accumulatedValue * artPer;
+                return $"使用修正且误差=0，额外+{artTotal}。永久累计+{artPer}/次";
+            case "速攻":
+                int speedBase = lv >= 2 ? 30 : 20;
+                int speedPer = lv >= 2 ? 8 : 5;
+                int speedTotal = speedBase + card.accumulatedValue * speedPer;
+                return $"15张内达成且误差≤1，额外+{speedTotal}。永久累计+{speedPer}/次";
+            case "完美风暴":
+                float mult = lv >= 2 ? 2f : 1.5f;
+                return $"误差=0时收入x{mult}";
+            case "宽容":
+                int tolBonus = lv >= 2 ? 2 : 1;
+                return $"本层误差容忍度+{tolBonus}";
+            case "零误差红利":
+                int zeroB = lv >= 2 ? 35 : 20;
+                return $"误差=0额外+{zeroB}筹码";
+            case "早鸟优惠":
+                int ebBonus = lv >= 2 ? 20 : 12;
+                return $"翻牌≤10达成，额外+{ebBonus}筹码";
+            case "近误差红利":
+                int nearB = lv >= 2 ? 15 : 8;
+                return $"误差=1时额外+{nearB}筹码";
+            case "宽限":
+                int ext = lv >= 2 ? 4 : 2;
+                return $"修正窗口延长{ext}张";
+            case "再修一次":
+                int extra = lv >= 2 ? 2 : 1;
+                return $"每局修正次数+{extra}";
+            case "修正促销":
+                return lv >= 2 ? "修正消耗降为0且使用后额外+3筹码" : "修正消耗降为0";
+            default:
+                if (lv >= 2 && card.description.Contains("升级："))
+                {
+                    int idx = card.description.IndexOf("升级：");
+                    if (idx >= 0)
+                    {
+                        string upgradedPart = card.description.Substring(idx + 3);
+                        return "已升级：" + upgradedPart;
+                    }
+                }
+                return card.description;
+        }
+    }
 
     public void ResetAllForNewStage()
     {
@@ -309,7 +338,6 @@ public class StrategyCardManager : MonoBehaviour
         earlyBirdBonus = 0;
         zeroErrorBonus = 0;
         allInMode = false;
-        freeCorrections = 0;
         previewEnabled = false;
         previewCards.Clear();
     }
@@ -331,7 +359,6 @@ public class StrategyCardManager : MonoBehaviour
             chipsManager.SetChips(1);
             deathDefy = false;
             ownedCards.RemoveAll(c => c.cardName == "不死鸟");
-            Debug.Log("[不死鸟] 触发，筹码保留1");
         }
     }
 }

@@ -4,7 +4,10 @@ using UnityEngine.Events;
 
 public class GameManager : MonoBehaviour
 {
-    [Header("依赖组件")]
+    [Header("配置")]
+    [SerializeField] private GameConfigSO config;
+
+    [Header("组件")]
     [SerializeField] private Deck deck;
     [SerializeField] private TargetHandManager targetHandManager;
     [SerializeField] private CorrectionManager correctionManager;
@@ -14,7 +17,6 @@ public class GameManager : MonoBehaviour
     [SerializeField] private RuleManager ruleManager;
     [SerializeField] private LevelManager levelManager;
     [SerializeField] private ChipsManager chipsManager;
-    [SerializeField] private GameConfigSO config;
 
     [Header("游戏状态")]
     private bool isWaitingForGuess;
@@ -28,8 +30,9 @@ public class GameManager : MonoBehaviour
     public UnityEvent OnTargetAchieved;
     public UnityEvent<string> OnStageEnd;
 
-    // 稳扎稳打连续触发计数
     private int steadyStreak;
+
+    public StrategyCardManager StrategyCardManager => strategyCardManager;
 
     void Awake()
     {
@@ -38,9 +41,6 @@ public class GameManager : MonoBehaviour
         OnCardDrawn ??= new UnityEvent<Card>();
         OnTargetAchieved ??= new UnityEvent();
         OnStageEnd ??= new UnityEvent<string>();
-
-        if (chipsManager != null)
-            chipsManager.OnBankrupt.AddListener(OnBankrupt);
     }
 
     void Start()
@@ -75,21 +75,12 @@ public class GameManager : MonoBehaviour
         shopManager.RefreshShopForNewStage();
 
         OnGameMessage?.Invoke($"第{layer}层 第{stage}关");
-        EnterGuessPhase();
-    }
 
-    private void EnterGuessPhase()
-    {
-        isWaitingForGuess = true;
-        isDrawingPhase = false;
-
-        // 天启效果：自动看顶部44张
         if (strategyCardManager.HasApocalypse())
         {
             UseStrategyCard("天启");
         }
 
-        // 预览效果
         if (strategyCardManager.IsPreviewEnabled())
         {
             bool hits = strategyCardManager.ExecutePreview();
@@ -102,6 +93,13 @@ public class GameManager : MonoBehaviour
             }
         }
 
+        EnterGuessPhase();
+    }
+
+    private void EnterGuessPhase()
+    {
+        isWaitingForGuess = true;
+        isDrawingPhase = false;
         OnWaitingForInput?.Invoke();
         OnGameMessage?.Invoke("请给出你的猜测数字 N");
     }
@@ -121,10 +119,7 @@ public class GameManager : MonoBehaviour
     public void UseCorrection(int newGuessN)
     {
         if (!isDrawingPhase || isGameOver) return;
-        bool wasCorrection = correctionManager.GetLastGuess() > 0;
         correctionManager.UseCorrection(newGuessN);
-
-        // 修正艺术家检查在结算时处理
     }
 
     public void DrawCard()
@@ -174,15 +169,10 @@ public class GameManager : MonoBehaviour
         int error = Mathf.Abs(lastGuess - achievedAtCardCount);
         int layer = levelManager.GetCurrentStageInfo().layer;
         int baseTolerance = config != null ? config.GetErrorTolerance(layer) : 5;
-        int toleranceBonus = strategyCardManager.GetErrorToleranceBonus()
-                            + strategyCardManager.GetFateWheelBonus();
+        int toleranceBonus = strategyCardManager.GetErrorToleranceBonus() + strategyCardManager.GetFateWheelBonus();
         int tolerance = baseTolerance + toleranceBonus;
 
-        // 孤注一掷模式：容忍度强制为0
-        if (strategyCardManager.IsAllInMode())
-        {
-            tolerance = 0;
-        }
+        if (strategyCardManager.IsAllInMode()) tolerance = 0;
 
         if (error > tolerance)
         {
@@ -190,8 +180,8 @@ public class GameManager : MonoBehaviour
             {
                 strategyCardManager.ConsumeDeathDefy();
                 chipsManager.SetChips(Mathf.Max(1, chipsManager.GetChips()));
-                OnGameMessage?.Invoke("不死鸟触发！视为存活，无筹码奖励");
-                EndStage(true);
+                OnGameMessage?.Invoke("不死鸟触发！视为存活");
+                OnStageEnd?.Invoke("不死鸟触发！存活");
                 return;
             }
 
@@ -201,101 +191,76 @@ public class GameManager : MonoBehaviour
         }
 
         int extraChips = 0;
+        string bonusDetail = "";
 
-        // 误差为0额外+20
+        chipsManager.AwardSurviveBonus();
+        bonusDetail += "存活 +10\n";
+
         if (error == 0)
         {
-            int zeroBonus = config != null ? config.zeroErrorBonus : 20;
-            zeroBonus += strategyCardManager.GetZeroErrorBonus();
-            extraChips += zeroBonus;
-
-            // 完美风暴倍数
+            int zeroBonus = (config != null ? config.zeroErrorBonus : 20) + strategyCardManager.GetZeroErrorBonus();
             float mult = strategyCardManager.GetPerfectMultiplier();
-            if (mult > 1f) extraChips = Mathf.RoundToInt(extraChips * mult);
+            if (mult > 1f) zeroBonus = Mathf.RoundToInt(zeroBonus * mult);
+            if (strategyCardManager.IsAllInMode()) zeroBonus *= 5;
+            extraChips += zeroBonus;
+            bonusDetail += $"完美猜测 +{zeroBonus}\n";
 
-            // 孤注一掷x5
-            if (strategyCardManager.IsAllInMode())
-            {
-                extraChips = extraChips * 5;
-                OnGameMessage?.Invoke("孤注一掷！收入x5！");
-            }
-
-            OnGameMessage?.Invoke($"完美猜测！+{extraChips}");
-
-            // 修正艺术家累计
             if (strategyCardManager.HasCard("修正艺术家") && correctionManager.GetLastGuess() > 0)
-            {
                 strategyCardManager.AddAccumulatedValue("修正艺术家", 1);
-                Debug.Log($"[修正艺术家] 累计{strategyCardManager.GetAccumulatedValue("修正艺术家")}次");
-            }
         }
 
-        // 误差=1额外+5
         if (error == 1)
         {
-            int oneBonus = config != null ? config.oneErrorBonus : 5;
-            int nearBonus = strategyCardManager.GetNearErrorBonus();
-            extraChips += oneBonus + nearBonus;
-            OnGameMessage?.Invoke($"误差为1！+{oneBonus + nearBonus}");
+            int oneBonus = (config != null ? config.oneErrorBonus : 5) + strategyCardManager.GetNearErrorBonus();
+            extraChips += oneBonus;
+            bonusDetail += $"误差1红利 +{oneBonus}\n";
         }
 
-        // 偏差大师：误差≥3且存活
         if (error >= 3 && strategyCardManager.HasCard("偏差大师"))
         {
             strategyCardManager.AddAccumulatedValue("偏差大师", 1);
             int bonus = strategyCardManager.GetDeviationMasterBonus();
             extraChips += bonus;
-            OnGameMessage?.Invoke($"偏差大师 +{bonus}");
+            bonusDetail += $"偏差大师 +{bonus}\n";
         }
 
-        // 早鸟优惠
         if (achievedAtCardCount <= strategyCardManager.GetEarlyBirdThreshold())
         {
             int earlyBonus = strategyCardManager.GetEarlyBirdBonus();
             if (earlyBonus > 0)
             {
                 extraChips += earlyBonus;
-                OnGameMessage?.Invoke($"早鸟优惠 +{earlyBonus}");
+                bonusDetail += $"早鸟优惠 +{earlyBonus}\n";
             }
         }
 
-        // 稳扎稳打
         if (error <= 2 && strategyCardManager.HasCard("稳扎稳打"))
         {
             steadyStreak++;
             strategyCardManager.AddAccumulatedValue("稳扎稳打", 1);
             int bonus = strategyCardManager.GetSteadyBonus();
             extraChips += bonus;
-            OnGameMessage?.Invoke($"稳扎稳打 +{bonus}，连续{steadyStreak}局");
+            bonusDetail += $"稳扎稳打 +{bonus}(连续{steadyStreak}局)\n";
         }
-        else
+        else if (strategyCardManager.HasCard("稳扎稳打"))
         {
-            if (strategyCardManager.HasCard("稳扎稳打"))
-            {
-                steadyStreak = 0;
-                strategyCardManager.ResetAccumulatedValue("稳扎稳打");
-                OnGameMessage?.Invoke("稳扎稳打中断，累计重置");
-            }
+            steadyStreak = 0;
+            strategyCardManager.ResetAccumulatedValue("稳扎稳打");
         }
 
-        // 速攻
         if (achievedAtCardCount <= 15 && error <= 1 && strategyCardManager.HasCard("速攻"))
         {
             strategyCardManager.AddAccumulatedValue("速攻", 1);
             int bonus = strategyCardManager.GetSpeedRunBonus();
             extraChips += bonus;
-            OnGameMessage?.Invoke($"速攻 +{bonus}");
+            bonusDetail += $"速攻 +{bonus}\n";
         }
 
-        // 存活奖励+10
-        chipsManager.AwardSurviveBonus();
+        if (extraChips != 0) chipsManager.AddChips(extraChips);
 
-        if (extraChips != 0)
-            chipsManager.AddChips(extraChips);
-
-        OnGameMessage?.Invoke($"结算：猜测N={lastGuess}，实际{achievedAtCardCount}张，误差{error}，额外筹码{(extraChips >= 0 ? "+" : "")}{extraChips}");
-
-        EndStage(true);
+        string resultMsg = $"结算：猜测N={lastGuess}，实际{achievedAtCardCount}张\n误差={error}，容忍度={tolerance}\n{bonusDetail}";
+        OnGameMessage?.Invoke(resultMsg);
+        OnStageEnd?.Invoke(resultMsg);
     }
 
     private void HandleStageFailure()
@@ -305,43 +270,32 @@ public class GameManager : MonoBehaviour
             strategyCardManager.ConsumeDeathDefy();
             chipsManager.SetChips(Mathf.Max(1, chipsManager.GetChips()));
             OnGameMessage?.Invoke("不死鸟触发！视为存活");
-            EndStage(true);
+            OnStageEnd?.Invoke("不死鸟触发！存活");
             return;
         }
 
         isGameOver = true;
         isDrawingPhase = false;
-        OnGameMessage?.Invoke("游戏结束");
+        OnGameMessage?.Invoke("游戏失败！");
+        OnStageEnd?.Invoke("游戏失败！");
     }
 
-    private void EndStage(bool survived)
+    public void ProceedToNextStage()
     {
-        isDrawingPhase = false;
-
         if (isGameOver) return;
 
-        targetHandManager.MarkCurrentTargetAsCompleted();
-
         var (layer, stage) = levelManager.GetCurrentStageInfo();
-        OnStageEnd?.Invoke($"第{layer}层第{stage}关结束");
-
-        if (!survived)
-        {
-            isGameOver = true;
-            return;
-        }
-
         int totalLayers = config != null ? config.totalLayers : 5;
+
         if (layer == totalLayers && stage >= 1)
         {
             OnGameMessage?.Invoke("恭喜！全部通关！");
             isGameOver = true;
+            return;
         }
-        else
-        {
-            levelManager.CompleteCurrentStage();
-            StartNewStage();
-        }
+
+        levelManager.CompleteCurrentStage();
+        StartNewStage();
     }
 
     public bool UseStrategyCard(string cardName)
@@ -374,6 +328,15 @@ public class GameManager : MonoBehaviour
         return ruleManager.RevealFadedCard(cardIndex, chipsManager);
     }
 
+    public int GetCurrentErrorTolerance()
+    {
+        int layer = levelManager.GetCurrentStageInfo().layer;
+        int baseTolerance = config != null ? config.GetErrorTolerance(layer) : 5;
+        int bonus = strategyCardManager.GetErrorToleranceBonus() + strategyCardManager.GetFateWheelBonus();
+        if (strategyCardManager.IsAllInMode()) return 0;
+        return baseTolerance + bonus;
+    }
+
     private void OnBankrupt()
     {
         if (strategyCardManager.HasDeathDefy())
@@ -388,6 +351,22 @@ public class GameManager : MonoBehaviour
         isDrawingPhase = false;
         isWaitingForGuess = false;
         OnGameMessage?.Invoke("筹码归零，游戏结束");
+    }
+
+    public (int layer, int stage) GetCurrentLayerStage() => levelManager.GetCurrentStageInfo();
+
+    public bool IsCardOwned(string cardName) => strategyCardManager.HasCard(cardName);
+
+    public bool IsCardUpgradable(string cardName)
+    {
+        var card = strategyCardManager.GetOwnedCards().Find(c => c.cardName == cardName);
+        return card != null && card.IsUpgradable;
+    }
+
+    public int GetCardUpgradeCost(string cardName)
+    {
+        var card = strategyCardManager.GetOwnedCards().Find(c => c.cardName == cardName);
+        return card != null ? card.GetUpgradeCost() : -1;
     }
 
     public GameState GetCurrentState()

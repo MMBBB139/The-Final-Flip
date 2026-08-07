@@ -13,14 +13,17 @@ MonoBehaviour:
   m_Name: GameConfig
   m_EditorClassIdentifier: Assembly-CSharp::GameConfigSO
   initialChips: 30
-  surviveReward: 20
+  surviveReward: 10
   maxCorrectionsPerRound: 1
   correctionCost: 10
   shopSlotCount: 2
-  refreshCost: 5
+  refreshCost: 10
   maxCarryCards: 4
-  errorToleranceByLayer: 04000000030000000200000001000000
-  layer1ReturnCardCount: 3
+  totalLayers: 5
+  stagesPerLayer: 3
+  errorToleranceByLayer: 0400000003000000030000000200000000000000
+  zeroErrorBonus: 20
+  oneErrorBonus: 5
   layer2CorrectionWindowOffset: 3
   layer3MaxDrawLimit: 25
-  layer4RevealFadedCost: 20
+  layer4FadedBaseCost: 10

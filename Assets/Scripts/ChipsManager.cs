@@ -30,9 +30,6 @@ public class ChipsManager : MonoBehaviour
 
         Debug.Log($"{(amount > 0 ? "+" : "")}{amount} 筹码，当前: {currentChips}");
         OnChipsChanged?.Invoke(currentChips);
-
-        if (currentChips <= 0)
-            OnBankrupt?.Invoke();
     }
 
     public void SetChips(int amount)

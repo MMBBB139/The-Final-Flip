@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using UnityEngine;
 
 public static class StrategyCardDefinitions
@@ -16,10 +17,19 @@ public static class StrategyCardDefinitions
                     list.Add(new StrategyCard(data, mgr => {
                         int count = mgr.GetCardLevel("探顶") == 2 ? 5 : 3;
                         var cards = mgr.Deck.PeekTop(count);
-                        Debug.Log($"[探顶] 顶部{count}张:");
-                        foreach (var c in cards) Debug.Log($"  {c}");
+                        StringBuilder sb = new StringBuilder("牌堆顶部：");
+                        for (int i = 0; i < cards.Count; i++)
+                            sb.Append($"第{i + 1}张{CardToChinese(cards[i])} ");
+                        mgr.OnEffectTextUpdate?.Invoke("探顶", sb.ToString().Trim());
                         if (mgr.GetCardLevel("探顶") == 2 && cards.Count > 0)
-                            mgr.RequestSinkOneFromPeek(cards);
+                        {
+                            List<string> opts = new List<string>();
+                            for (int i = 0; i < cards.Count; i++)
+                                opts.Add($"第{i + 1}张 {CardToChinese(cards[i])}");
+                            mgr.RequestSelection("选择一张沉底", opts, idx => {
+                                mgr.Deck.SinkCard(idx);
+                            });
+                        }
                     }));
                     break;
 
@@ -27,21 +37,49 @@ public static class StrategyCardDefinitions
                     list.Add(new StrategyCard(data, mgr => {
                         int count = mgr.GetCardLevel("探底") == 2 ? 5 : 3;
                         var cards = mgr.Deck.PeekBottom(count);
-                        Debug.Log($"[探底] 底部{count}张:");
-                        foreach (var c in cards) Debug.Log($"  {c}");
-                        if (mgr.GetCardLevel("探底") == 2 && cards.Count > 1)
-                            mgr.RequestTopOneFromPeek(cards);
-                        else if (mgr.GetCardLevel("探底") == 1 && cards.Count > 0)
-                            mgr.RequestTopOneFromPeek(new List<Card> { cards[0] });
+                        StringBuilder sb = new StringBuilder("牌堆底部：");
+                        for (int i = 0; i < cards.Count; i++)
+                            sb.Append($"倒数第{i + 1}张{CardToChinese(cards[i])} ");
+                        mgr.OnEffectTextUpdate?.Invoke("探底", sb.ToString().Trim());
+
+                        int toSelect = mgr.GetCardLevel("探底") == 2 ? 2 : 1;
+                        List<string> opts = new List<string>();
+                        for (int i = 0; i < cards.Count; i++)
+                            opts.Add($"倒数第{i + 1}张 {CardToChinese(cards[i])}");
+
+                        SelectMultiple(mgr, "选择要置顶的牌", opts, toSelect, selectedIndices => {
+                            List<Card> toTop = new List<Card>();
+                            for (int i = 0; i < selectedIndices.Count; i++)
+                            {
+                                toTop.Add(cards[selectedIndices[i]]);
+                            }
+                            for (int i = toTop.Count - 1; i >= 0; i--)
+                            {
+                                int idx = mgr.Deck.FindCardIndex(toTop[i]);
+                                if (idx >= 0) mgr.Deck.TopCard(idx);
+                            }
+                        });
                     }));
                     break;
 
                 case "探牌":
                     list.Add(new StrategyCard(data, mgr => {
-                        int count = mgr.GetCardLevel("探牌") == 2 ? 5 : 3;
-                        var cards = mgr.Deck.PeekRandomUnrevealed(count);
-                        Debug.Log($"[探牌] 随机{count}张:");
-                        foreach (var c in cards) Debug.Log($"  {c}");
+                        int count = mgr.GetCardLevel("探牌") == 2 ? 8 : 5;
+                        var remaining = mgr.Deck.GetRemainingDeck();
+                        var rng = new System.Random();
+                        var indices = new HashSet<int>();
+                        StringBuilder sb = new StringBuilder("未翻牌中：");
+                        int found = 0;
+                        while (found < count && indices.Count < remaining.Count)
+                        {
+                            int idx = rng.Next(remaining.Count);
+                            if (indices.Add(idx))
+                            {
+                                sb.Append($"第{idx + 1}张{CardToChinese(remaining[idx])} ");
+                                found++;
+                            }
+                        }
+                        mgr.OnEffectTextUpdate?.Invoke("探牌", sb.ToString().Trim());
                     }));
                     break;
 
@@ -61,9 +99,8 @@ public static class StrategyCardDefinitions
 
                 case "早鸟优惠":
                     list.Add(new StrategyCard(data, mgr => {
-                        int threshold = mgr.GetCardLevel("早鸟优惠") == 2 ? 10 : 10;
                         int bonus = mgr.GetCardLevel("早鸟优惠") == 2 ? 20 : 12;
-                        mgr.SetEarlyBird(threshold, bonus);
+                        mgr.SetEarlyBird(10, bonus);
                     }, mgr => true));
                     break;
 
@@ -81,42 +118,75 @@ public static class StrategyCardDefinitions
                 // ===== 第二层 =====
                 case "点数搜索":
                     list.Add(new StrategyCard(data, mgr => {
-                        mgr.RequestRankSearch(mgr.GetCardLevel("点数搜索") == 2);
+                        bool showAll = mgr.GetCardLevel("点数搜索") == 2;
+                        List<string> ranks = new List<string> { "A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K" };
+                        mgr.RequestSelection("选择要搜索的点数", ranks, idx => {
+                            Card.Rank targetRank = (Card.Rank)(idx + 1);
+                            var remaining = mgr.Deck.GetRemainingDeck();
+                            StringBuilder sb = new StringBuilder($"点数{ranks[idx]}：");
+                            int found = 0;
+                            for (int i = 0; i < remaining.Count; i++)
+                            {
+                                if (remaining[i].rank == targetRank)
+                                {
+                                    sb.Append($"第{i + 1}张 ");
+                                    found++;
+                                    if (!showAll && found >= 2) break;
+                                }
+                            }
+                            if (found == 0) sb.Append("未找到");
+                            mgr.OnEffectTextUpdate?.Invoke("点数搜索", sb.ToString().Trim());
+                        });
                     }));
                     break;
 
                 case "花色搜索":
                     list.Add(new StrategyCard(data, mgr => {
-                        mgr.RequestSuitSearch(mgr.GetCardLevel("花色搜索") == 2);
+                        bool showAll = mgr.GetCardLevel("花色搜索") == 2;
+                        List<string> suits = new List<string> { "黑桃", "红心", "梅花", "方块" };
+                        mgr.RequestSelection("选择要搜索的花色", suits, idx => {
+                            Card.Suit targetSuit = (Card.Suit)idx;
+                            var remaining = mgr.Deck.GetRemainingDeck();
+                            StringBuilder sb = new StringBuilder($"{suits[idx]}：");
+                            int found = 0;
+                            for (int i = 0; i < remaining.Count; i++)
+                            {
+                                if (remaining[i].suit == targetSuit)
+                                {
+                                    sb.Append($"第{i + 1}张{CardToChinese(remaining[i])} ");
+                                    found++;
+                                    if (!showAll && found >= 2) break;
+                                }
+                            }
+                            if (found == 0) sb.Append("未找到");
+                            mgr.OnEffectTextUpdate?.Invoke("花色搜索", sb.ToString().Trim());
+                        });
                     }));
                     break;
 
                 case "沉底":
                     list.Add(new StrategyCard(data, mgr => {
                         if (mgr.GetCardLevel("沉底") == 2)
-                            mgr.RequestSinkChoice(3);
+                        {
+                            var top3 = mgr.Deck.PeekTop(3);
+                            List<string> opts = new List<string>();
+                            for (int i = 0; i < top3.Count; i++)
+                                opts.Add($"第{i + 1}张 {CardToChinese(top3[i])}");
+                            mgr.RequestSelection("选择要沉底的牌", opts, idx => {
+                                mgr.Deck.SinkCard(idx);
+                            });
+                        }
                         else
+                        {
                             mgr.Deck.MoveTopToBottom(2);
+                        }
                     }));
                     break;
 
                 case "交换":
                     list.Add(new StrategyCard(data, mgr => {
                         int count = mgr.GetCardLevel("交换") == 2 ? 3 : 2;
-                        var top = mgr.Deck.PeekTop(count);
-                        var bottom = mgr.Deck.PeekBottom(count);
-                        mgr.Deck.RemoveTop(count);
-                        var remaining = mgr.Deck.GetRemainingDeck();
-                        // 移除底部的牌
-                        for (int i = 0; i < count && remaining.Count > 0; i++)
-                            remaining.RemoveAt(remaining.Count - 1);
-                        // 底部牌放到顶部
-                        for (int i = bottom.Count - 1; i >= 0; i--)
-                            remaining.Insert(0, bottom[i]);
-                        // 顶部牌放到底部
-                        for (int i = 0; i < top.Count; i++)
-                            remaining.Add(top[i]);
-                        Debug.Log($"[交换] 顶部{count}张和底部{count}张互换");
+                        mgr.Deck.SwapTopAndBottom(count);
                     }));
                     break;
 
@@ -126,8 +196,10 @@ public static class StrategyCardDefinitions
                         if (mgr.GetCardLevel("洗牌") == 2)
                         {
                             var top = mgr.Deck.PeekTop(2);
-                            Debug.Log("[洗牌] 免费查看顶部2张:");
-                            foreach (var c in top) Debug.Log($"  {c}");
+                            StringBuilder sb = new StringBuilder("洗牌后顶部：");
+                            for (int i = 0; i < top.Count; i++)
+                                sb.Append($"第{i + 1}张{CardToChinese(top[i])} ");
+                            mgr.OnEffectTextUpdate?.Invoke("洗牌", sb.ToString().Trim());
                         }
                     }));
                     break;
@@ -143,44 +215,55 @@ public static class StrategyCardDefinitions
                     list.Add(new StrategyCard(data, mgr => {
                         int count = mgr.GetCardLevel("快进") == 2 ? 5 : 3;
                         var cards = mgr.Deck.PeekTop(count);
-                        Debug.Log($"[快进] 连续翻{count}张:");
-                        foreach (var c in cards) Debug.Log($"  {c}");
-                        mgr.OnRequestFastForwardSelect?.Invoke(count, selectedIdx => {
-                            var remaining = mgr.Deck.GetRemainingDeck();
-                            var selected = remaining[selectedIdx];
-                            remaining.RemoveAt(selectedIdx);
-                            remaining.Insert(0, selected);
-                            for (int i = 1; i < count; i++)
-                                mgr.Deck.MoveTopToBottom(1);
-                            Debug.Log($"[快进] 保留{selected}，其余沉底");
+                        List<string> opts = new List<string>();
+                        for (int i = 0; i < cards.Count; i++)
+                            opts.Add($"第{i + 1}张 {CardToChinese(cards[i])}");
+                        mgr.RequestSelection("选择要保留的牌（其余沉底）", opts, idx => {
+                            mgr.Deck.FastForward(count, idx);
                         });
                     }));
                     break;
 
                 case "删除":
                     list.Add(new StrategyCard(data, mgr => {
+                        var drawn = mgr.Deck.GetDrawnCards();
+                        if (drawn.Count == 0) return;
                         int max = mgr.GetCardLevel("删除") == 2 ? 2 : 1;
-                        int actual = Mathf.Min(max, mgr.Deck.GetDrawnCount());
-                        if (actual > 0)
-                        {
-                            mgr.Deck.RemoveFromDrawn(actual);
-                            Debug.Log($"[删除] 已删除{actual}张已翻牌，当前计数: {mgr.Deck.GetDrawnCount()}");
-                        }
+                        List<string> opts = new List<string>();
+                        for (int i = 0; i < drawn.Count; i++)
+                            opts.Add($"第{i + 1}张 {CardToChinese(drawn[i])}");
+                        SelectMultiple(mgr, "选择要删除的已翻牌", opts, max, selectedIndices => {
+                            if (selectedIndices.Count > 0)
+                                mgr.Deck.RemoveFromDrawn(selectedIndices.Count);
+                        });
                     }));
                     break;
 
                 case "复制":
                     list.Add(new StrategyCard(data, mgr => {
+                        var drawn = mgr.Deck.GetDrawnCards();
+                        if (drawn.Count == 0) return;
                         bool toTop = mgr.GetCardLevel("复制") == 2;
-                        mgr.RequestCopyDrawnCard(toTop);
+                        List<string> opts = new List<string>();
+                        for (int i = 0; i < drawn.Count; i++)
+                            opts.Add($"第{i + 1}张 {CardToChinese(drawn[i])}");
+                        mgr.RequestSelection("选择要复制的已翻牌", opts, idx => {
+                            mgr.Deck.CopyDrawnCard(idx, toTop);
+                        });
                     }));
                     break;
 
                 case "换目标":
                     list.Add(new StrategyCard(data, mgr => {
-                        int options = mgr.GetCardLevel("换目标") == 2 ? 3 : 2;
-                        var alternatives = mgr.TargetHandManager.GetAlternativeTargets(options);
-                        mgr.RequestTargetChoice(alternatives);
+                        var alternatives = mgr.TargetHandManager.GetAlternativeTargets(mgr.GetCardLevel("换目标") == 2 ? 3 : 2);
+                        if (alternatives.Count == 0) return;
+                        List<string> opts = new List<string>();
+                        foreach (var t in alternatives)
+                            opts.Add($"{t.handName}：{t.description}");
+                        mgr.RequestSelection("选择新目标", opts, idx => {
+                            mgr.TargetHandManager.SetCurrentTarget(alternatives[idx]);
+                            mgr.OnEffectTextUpdate?.Invoke("换目标", $"已更换目标为：{alternatives[idx].handName}");
+                        });
                     }));
                     break;
 
@@ -213,23 +296,22 @@ public static class StrategyCardDefinitions
                 // ===== 第三层 =====
                 case "回收":
                     list.Add(new StrategyCard(data, mgr => {
+                        var drawn = mgr.Deck.GetDrawnCards();
+                        if (drawn.Count == 0) return;
                         int max = mgr.GetCardLevel("回收") == 2 ? 2 : 1;
-                        int actual = Mathf.Min(max, mgr.Deck.GetDrawnCount());
-                        if (actual > 0)
-                        {
-                            mgr.Deck.ReturnDrawnToDeck(actual);
-                            Debug.Log($"[回收] 已洗回{actual}张已翻牌，当前计数: {mgr.Deck.GetDrawnCount()}");
-                        }
+                        List<string> opts = new List<string>();
+                        for (int i = 0; i < drawn.Count; i++)
+                            opts.Add($"第{i + 1}张 {CardToChinese(drawn[i])}");
+                        SelectMultiple(mgr, "选择要洗回的已翻牌", opts, max, selectedIndices => {
+                            if (selectedIndices.Count > 0)
+                                mgr.Deck.ReturnDrawnToDeck(selectedIndices.Count);
+                        });
                     }));
                     break;
 
                 case "修正促销":
                     list.Add(new StrategyCard(data, mgr => {
                         mgr.CorrectionManager.SetCorrectionCost(0);
-                        if (mgr.GetCardLevel("修正促销") == 2)
-                        {
-                            Debug.Log("[修正促销+] 修正免费且使用后额外+3");
-                        }
                     }, mgr => true));
                     break;
 
@@ -243,7 +325,6 @@ public static class StrategyCardDefinitions
                     list.Add(new StrategyCard(data, mgr => {
                         mgr.SetAllInMode(true);
                         mgr.AddErrorToleranceBonus(-mgr.GetErrorToleranceBonus());
-                        Debug.Log("[孤注一掷] 容忍度=0，误差=0时收入x5");
                     }));
                     break;
 
@@ -277,16 +358,68 @@ public static class StrategyCardDefinitions
                     list.Add(new StrategyCard(data, mgr => {
                         int count = mgr.GetApocalypsePreviewCount();
                         var cards = mgr.Deck.PeekTop(count);
-                        Debug.Log($"[天启] 查看顶部{count}张:");
-                        foreach (var c in cards) Debug.Log($"  {c}");
+                        StringBuilder sb = new StringBuilder($"顶部{count}张：");
+                        int show = Mathf.Min(cards.Count, 10);
+                        for (int i = 0; i < show; i++)
+                            sb.Append($"第{i + 1}张{CardToChinese(cards[i])} ");
+                        if (cards.Count > 10) sb.Append($"...共{cards.Count}张");
+                        mgr.OnEffectTextUpdate?.Invoke("天启", sb.ToString().Trim());
                     }));
                     break;
 
                 default:
-                    Debug.LogWarning($"未实现效果的策略牌: {data.cardName}");
                     break;
             }
         }
         return list;
+    }
+
+    private static void SelectMultiple(StrategyCardManager mgr, string prompt, List<string> options, int maxCount, System.Action<List<int>> callback)
+    {
+        List<int> selected = new List<int>();
+        List<string> remainingOptions = new List<string>(options);
+        List<int> remainingIndices = new List<int>();
+        for (int i = 0; i < options.Count; i++) remainingIndices.Add(i);
+
+        ShowOptions();
+
+        void ShowOptions()
+        {
+            if (selected.Count >= maxCount || remainingOptions.Count == 0)
+            {
+                callback(selected);
+                return;
+            }
+            mgr.RequestSelection($"{prompt}（已选{selected.Count}/{maxCount}，取消完成）", remainingOptions, choiceIndex => {
+                int actualIndex = remainingIndices[choiceIndex];
+                selected.Add(actualIndex);
+                remainingOptions.RemoveAt(choiceIndex);
+                remainingIndices.RemoveAt(choiceIndex);
+                ShowOptions();
+            }, () => {
+                callback(selected);
+            });
+        }
+    }
+
+    private static string CardToChinese(Card card)
+    {
+        string suit = card.suit switch
+        {
+            Card.Suit.Spades => "黑桃",
+            Card.Suit.Hearts => "红心",
+            Card.Suit.Clubs => "梅花",
+            Card.Suit.Diamonds => "方块",
+            _ => ""
+        };
+        string rank = card.rank switch
+        {
+            Card.Rank.Ace => "A",
+            Card.Rank.Jack => "J",
+            Card.Rank.Queen => "Q",
+            Card.Rank.King => "K",
+            _ => ((int)card.rank).ToString()
+        };
+        return suit + rank;
     }
 }
