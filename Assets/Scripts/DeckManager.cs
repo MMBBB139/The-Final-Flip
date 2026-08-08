@@ -1,14 +1,22 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-
 public class DeckManager : MonoBehaviour
 {
+    public static DeckManager Instance { get; private set; }
+
     public List<Card> deck = new List<Card>(52);   // 牌堆
     public List<Card> drawnCards = new List<Card>(); // 已翻开的牌
 
     void Awake()
     {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+
         BuildDeck();
     }
 
