@@ -5,6 +5,7 @@ using System.Linq;
 public abstract class GoalChecker
 {
     public abstract string goalName { get; }
+    public abstract int stage { get; } // 所属层级：1,2,3,4（第五层也算第四层）
     public abstract bool IsAchieved(List<Card> drawnCards);
 
     // 工具方法：检测是否有 needCount 张相同花色
@@ -76,6 +77,7 @@ public abstract class GoalChecker
 public class Goal_ThreeOdds : GoalChecker
 {
     public override string goalName => "三奇数";
+    public override int stage => 1;
     public override bool IsAchieved(List<Card> drawnCards)
         => CountCards(drawnCards, c => ((int)c.rank % 2 == 1)) >= 3;
 }
@@ -83,6 +85,7 @@ public class Goal_ThreeOdds : GoalChecker
 public class Goal_SmallThreeConsecutive : GoalChecker
 {
     public override string goalName => "小三连";
+    public override int stage => 1;
     public override bool IsAchieved(List<Card> drawnCards)
         => CountCards(drawnCards, c => ((int)c.rank <= 4)) >= 3;
 }
@@ -90,6 +93,7 @@ public class Goal_SmallThreeConsecutive : GoalChecker
 public class Goal_ThreeSameSuit : GoalChecker
 {
     public override string goalName => "同花三张";
+    public override int stage => 1;
     public override bool IsAchieved(List<Card> drawnCards)
         => HasSameSuitCount(drawnCards, 3);
 }
@@ -97,6 +101,7 @@ public class Goal_ThreeSameSuit : GoalChecker
 public class Goal_RedBlack33 : GoalChecker
 {
     public override string goalName => "红黑3-3";
+    public override int stage => 1;
     public override bool IsAchieved(List<Card> drawnCards)
     {
         int red = CountCards(drawnCards, c => c.suit == Card.Suit.Hearts || c.suit == Card.Suit.Diamonds);
@@ -108,6 +113,7 @@ public class Goal_RedBlack33 : GoalChecker
 public class Goal_AllFourSuits : GoalChecker
 {
     public override string goalName => "四色齐";
+    public override int stage => 1;
     public override bool IsAchieved(List<Card> drawnCards)
     {
         HashSet<Card.Suit> suits = new HashSet<Card.Suit>();
@@ -120,6 +126,7 @@ public class Goal_AllFourSuits : GoalChecker
 public class Goal_ThreeConsecutive : GoalChecker
 {
     public override string goalName => "三连数";
+    public override int stage => 1;
     public override bool IsAchieved(List<Card> drawnCards)
         => HasConsecutiveRanks(drawnCards, 3);
 }
@@ -129,6 +136,7 @@ public class Goal_ThreeConsecutive : GoalChecker
 public class Goal_FourOdds : GoalChecker
 {
     public override string goalName => "四奇数";
+    public override int stage => 2;
     public override bool IsAchieved(List<Card> drawnCards)
         => CountCards(drawnCards, c => ((int)c.rank % 2 == 1)) >= 4;
 }
@@ -136,6 +144,7 @@ public class Goal_FourOdds : GoalChecker
 public class Goal_SmallFourConsecutive : GoalChecker
 {
     public override string goalName => "小四连";
+    public override int stage => 2;
     public override bool IsAchieved(List<Card> drawnCards)
         => CountCards(drawnCards, c => ((int)c.rank <= 6)) >= 4;
 }
@@ -143,6 +152,7 @@ public class Goal_SmallFourConsecutive : GoalChecker
 public class Goal_ThreeFaceCards : GoalChecker
 {
     public override string goalName => "人头三张";
+    public override int stage => 2;
     public override bool IsAchieved(List<Card> drawnCards)
         => CountCards(drawnCards, c => ((int)c.rank >= 11 && (int)c.rank <= 13)) >= 3;
 }
@@ -150,6 +160,7 @@ public class Goal_ThreeFaceCards : GoalChecker
 public class Goal_TwoPair : GoalChecker
 {
     public override string goalName => "两对";
+    public override int stage => 2;
     public override bool IsAchieved(List<Card> drawnCards)
     {
         Dictionary<int, int> rankCount = new Dictionary<int, int>();
@@ -171,6 +182,7 @@ public class Goal_TwoPair : GoalChecker
 public class Goal_ThreeOfAKind : GoalChecker
 {
     public override string goalName => "三条";
+    public override int stage => 2;
     public override bool IsAchieved(List<Card> drawnCards)
         => HasSameRankCount(drawnCards, 3);
 }
@@ -178,6 +190,7 @@ public class Goal_ThreeOfAKind : GoalChecker
 public class Goal_FiveSameSuit : GoalChecker
 {
     public override string goalName => "五同花";
+    public override int stage => 2;
     public override bool IsAchieved(List<Card> drawnCards)
         => HasSameSuitCount(drawnCards, 5);
 }
@@ -187,6 +200,7 @@ public class Goal_FiveSameSuit : GoalChecker
 public class Goal_FourConsecutive : GoalChecker
 {
     public override string goalName => "四连数";
+    public override int stage => 3;
     public override bool IsAchieved(List<Card> drawnCards)
         => HasConsecutiveRanks(drawnCards, 4);
 }
@@ -194,6 +208,7 @@ public class Goal_FourConsecutive : GoalChecker
 public class Goal_SixSameSuit : GoalChecker
 {
     public override string goalName => "六同花";
+    public override int stage => 3;
     public override bool IsAchieved(List<Card> drawnCards)
         => HasSameSuitCount(drawnCards, 6);
 }
@@ -201,6 +216,7 @@ public class Goal_SixSameSuit : GoalChecker
 public class Goal_EvenFourConsecutive : GoalChecker
 {
     public override string goalName => "偶数四连";
+    public override int stage => 3;
     public override bool IsAchieved(List<Card> drawnCards)
     {
         HashSet<int> evenRanks = new HashSet<int>();
@@ -218,7 +234,6 @@ public class Goal_EvenFourConsecutive : GoalChecker
             int consecutive = 1;
             for (int j = i + 1; j < sorted.Count; j++)
             {
-                // 偶数连续：2,4,6,8... 差值都是2
                 if (sorted[j] == sorted[j - 1] + 2)
                     consecutive++;
                 else
@@ -233,6 +248,7 @@ public class Goal_EvenFourConsecutive : GoalChecker
 public class Goal_FiveConsecutive : GoalChecker
 {
     public override string goalName => "五连数";
+    public override int stage => 3;
     public override bool IsAchieved(List<Card> drawnCards)
         => HasConsecutiveRanks(drawnCards, 5);
 }
@@ -240,6 +256,7 @@ public class Goal_FiveConsecutive : GoalChecker
 public class Goal_FaceCardThreeSameSuit : GoalChecker
 {
     public override string goalName => "人头同花三张";
+    public override int stage => 3;
     public override bool IsAchieved(List<Card> drawnCards)
     {
         Dictionary<Card.Suit, int> faceCount = new Dictionary<Card.Suit, int>();
@@ -260,15 +277,17 @@ public class Goal_FaceCardThreeSameSuit : GoalChecker
 public class Goal_FourOfAKind : GoalChecker
 {
     public override string goalName => "四条";
+    public override int stage => 3;
     public override bool IsAchieved(List<Card> drawnCards)
         => HasSameRankCount(drawnCards, 4);
 }
 
-// ==================== 第4层 & 第5层 ====================
+// ==================== 第4层 & 第5层（都标记为 level 4） ====================
 
 public class Goal_FullHouse : GoalChecker
 {
     public override string goalName => "葫芦";
+    public override int stage => 4;
     public override bool IsAchieved(List<Card> drawnCards)
     {
         Dictionary<int, int> rankCount = new Dictionary<int, int>();
@@ -279,7 +298,6 @@ public class Goal_FullHouse : GoalChecker
             rankCount[r]++;
         }
 
-        // 先找有没有出现至少3次的点数
         int threeRank = -1;
         foreach (var kv in rankCount)
         {
@@ -291,7 +309,6 @@ public class Goal_FullHouse : GoalChecker
         }
         if (threeRank == -1) return false;
 
-        // 再找有没有不同的点数出现至少2次
         foreach (var kv in rankCount)
         {
             if (kv.Key != threeRank && kv.Value >= 2)
@@ -304,6 +321,7 @@ public class Goal_FullHouse : GoalChecker
 public class Goal_AllSuitsThree : GoalChecker
 {
     public override string goalName => "四色各三";
+    public override int stage => 4;
     public override bool IsAchieved(List<Card> drawnCards)
     {
         Dictionary<Card.Suit, int> suitCount = new Dictionary<Card.Suit, int>();
@@ -324,6 +342,7 @@ public class Goal_AllSuitsThree : GoalChecker
 public class Goal_SixConsecutive : GoalChecker
 {
     public override string goalName => "六连数";
+    public override int stage => 4;
     public override bool IsAchieved(List<Card> drawnCards)
         => HasConsecutiveRanks(drawnCards, 6);
 }
@@ -331,6 +350,7 @@ public class Goal_SixConsecutive : GoalChecker
 public class Goal_AllRanks : GoalChecker
 {
     public override string goalName => "全套点数";
+    public override int stage => 4;
     public override bool IsAchieved(List<Card> drawnCards)
     {
         HashSet<int> ranks = new HashSet<int>();
@@ -343,9 +363,9 @@ public class Goal_AllRanks : GoalChecker
 public class Goal_StraightFlush : GoalChecker
 {
     public override string goalName => "同花顺";
+    public override int stage => 4;
     public override bool IsAchieved(List<Card> drawnCards)
     {
-        // 按花色分组
         Dictionary<Card.Suit, List<Card>> suitGroups = new Dictionary<Card.Suit, List<Card>>();
         foreach (var card in drawnCards)
         {
@@ -354,7 +374,6 @@ public class Goal_StraightFlush : GoalChecker
             suitGroups[card.suit].Add(card);
         }
 
-        // 每个花色单独检查是否有5连数
         foreach (var kv in suitGroups)
         {
             if (HasConsecutiveRanks(kv.Value, 5)) return true;
@@ -366,9 +385,9 @@ public class Goal_StraightFlush : GoalChecker
 public class Goal_RoyalFlush : GoalChecker
 {
     public override string goalName => "皇家同花顺";
+    public override int stage => 4;
     public override bool IsAchieved(List<Card> drawnCards)
     {
-        // 皇家同花顺需要的点数：10, J, Q, K, A (即10, 11, 12, 13, 1)
         int[] royalRanks = { 10, 11, 12, 13, 1 };
 
         Dictionary<Card.Suit, HashSet<int>> suitRanks = new Dictionary<Card.Suit, HashSet<int>>();
