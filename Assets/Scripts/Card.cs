@@ -1,11 +1,14 @@
-public struct Card
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Card
 {
     public enum Suit
     {
-        Spades,     // ♠ 黑桃
-        Hearts,     // ♥ 红心
-        Clubs,      // ♣ 梅花
-        Diamonds    // ♦ 方片
+        Spades,
+        Hearts,
+        Clubs,
+        Diamonds
     }
 
     public enum Rank

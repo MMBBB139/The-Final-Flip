@@ -5,8 +5,8 @@ public class DeckManager : MonoBehaviour
 {
     public static DeckManager Instance { get; private set; }
 
-    public List<Card> deck = new List<Card>(52);   // 牌堆
-    public List<Card> drawnCards = new List<Card>(); // 已翻开的牌
+    public List<Card> deck = new List<Card>(52);
+    public List<Card> drawnCards = new List<Card>();
 
     void Awake()
     {
@@ -16,14 +16,13 @@ public class DeckManager : MonoBehaviour
             return;
         }
         Instance = this;
-
         BuildDeck();
     }
 
-    // 构建全新的52张牌
     public void BuildDeck()
     {
         deck.Clear();
+        drawnCards.Clear();
         foreach (Card.Suit suit in System.Enum.GetValues(typeof(Card.Suit)))
         {
             for (Card.Rank rank = Card.Rank.Ace; rank <= Card.Rank.King; rank++)
@@ -33,7 +32,6 @@ public class DeckManager : MonoBehaviour
         }
     }
 
-    // 洗牌
     public void Shuffle()
     {
         for (int i = deck.Count - 1; i > 0; i--)
@@ -45,7 +43,6 @@ public class DeckManager : MonoBehaviour
         }
     }
 
-    // 翻指定数量的牌
     public List<Card> Draw(int count)
     {
         List<Card> drawn = new List<Card>();
@@ -58,5 +55,68 @@ public class DeckManager : MonoBehaviour
             drawn.Add(card);
         }
         return drawn;
+    }
+
+    public List<Card> PeekTop(int count)
+    {
+        List<Card> result = new List<Card>();
+        for (int i = 0; i < count && i < deck.Count; i++)
+            result.Add(deck[i]);
+        return result;
+    }
+
+    public List<Card> PeekBottom(int count)
+    {
+        List<Card> result = new List<Card>();
+        for (int i = deck.Count - 1; i >= 0 && result.Count < count; i--)
+            result.Add(deck[i]);
+        return result;
+    }
+
+    public void MoveToTop(Card card)
+    {
+        deck.Remove(card);
+        deck.Insert(0, card);
+    }
+
+    public void MoveToBottom(Card card)
+    {
+        deck.Remove(card);
+        deck.Add(card);
+    }
+
+    public void DuplicateAndShuffleIn(Card card)
+    {
+        Card copy = new Card(card.suit, card.rank);
+        int index = Random.Range(0, deck.Count + 1);
+        deck.Insert(index, copy);
+    }
+
+    public void DuplicateToTop(Card card)
+    {
+        Card copy = new Card(card.suit, card.rank);
+        deck.Insert(0, copy);
+    }
+
+    public void RemoveDrawnCard(Card card)
+    {
+        drawnCards.Remove(card);
+    }
+
+    public void FadeRandomCard()
+    {
+        if (deck.Count == 0) return;
+        int index = Random.Range(0, deck.Count);
+        deck[index].isFaded = true;
+    }
+
+    public void ChangeSuit(Card card, Card.Suit newSuit)
+    {
+        card.suit = newSuit;
+    }
+
+    public void ChangeRank(Card card, Card.Rank newRank)
+    {
+        card.rank = newRank;
     }
 }
