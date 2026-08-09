@@ -12,6 +12,16 @@ public class CorrectionManager : MonoBehaviour
     private int defaultCount = 1;
     private int cost = 10;
 
+    // 从拥有的牌里提取修正相关的数据，只遍历一次
+    private struct CorrectionModifiers
+    {
+        public int extraCount;
+        public int rangeBonus;
+        public int windowExtension;
+        public bool infiniteWindow;
+        public bool freeCorrection;
+    }
+
     void Awake()
     {
         if (Instance != null && Instance != this)
@@ -25,7 +35,7 @@ public class CorrectionManager : MonoBehaviour
     public void StartRound(int guess)
     {
         baseGuess = guess;
-        correctionsRemaining = GetCount();
+        correctionsRemaining = defaultCount + GetModifiers().extraCount;
         isWindowOpen = true;
     }
 
@@ -33,9 +43,10 @@ public class CorrectionManager : MonoBehaviour
     {
         if (!isWindowOpen) return;
 
-        if (HasInfiniteWindow()) return;
+        var mods = GetModifiers();
+        if (mods.infiniteWindow) return;
 
-        int threshold = guessFlips - 3 - GetWindowExtension();
+        int threshold = guessFlips - 3 - mods.windowExtension;
         if (flipCount >= threshold)
             isWindowOpen = false;
     }
@@ -56,20 +67,22 @@ public class CorrectionManager : MonoBehaviour
             return false;
         }
 
-        int range = GetRange();
+        var mods = GetModifiers();
+        int range = defaultRange + mods.rangeBonus;
+
         if (Mathf.Abs(newGuess - baseGuess) > range)
         {
             errorMessage = $"修正范围超出±{range}";
             return false;
         }
 
-        if (!IsFree() && GameManager.Instance.chips < cost)
+        if (!mods.freeCorrection && GameManager.Instance.chips < cost)
         {
             errorMessage = "筹码不足";
             return false;
         }
 
-        if (!IsFree())
+        if (!mods.freeCorrection)
             GameManager.Instance.chips -= cost;
 
         correctionsRemaining--;
@@ -78,73 +91,37 @@ public class CorrectionManager : MonoBehaviour
         return true;
     }
 
-    public void CloseWindow()
-    {
-        isWindowOpen = false;
-    }
+    public void CloseWindow() => isWindowOpen = false;
+    public void ResetForRound() { correctionsRemaining = 0; isWindowOpen = false; }
 
-    public void ResetForRound()
+    // 所有策略牌相关逻辑集中在这里
+    private CorrectionModifiers GetModifiers()
     {
-        correctionsRemaining = 0;
-        isWindowOpen = false;
-    }
+        CorrectionModifiers mods = new CorrectionModifiers();
 
-    private int GetCount()
-    {
-        int count = defaultCount;
         foreach (var card in GameManager.Instance.ownedCards)
         {
             if (card is SC_OneMoreCorrection c)
-                count += c.ExtraCount;
+                mods.extraCount += c.ExtraCount;
             else if (card is SC_PerfectCorrection p)
-                count += p.ExtraCount;
-        }
-        return count;
-    }
-
-    private int GetRange()
-    {
-        int range = defaultRange;
-        foreach (var card in GameManager.Instance.ownedCards)
-        {
-            if (card is SC_FlexRange f)
-                range += f.RangeBonus;
+            {
+                mods.extraCount += p.ExtraCount;
+                mods.rangeBonus += p.RangeBonus;
+                mods.infiniteWindow = mods.infiniteWindow || p.InfiniteWindow;
+                mods.freeCorrection = mods.freeCorrection || p.FreeCorrection;
+            }
+            else if (card is SC_FlexRange f)
+                mods.rangeBonus += f.RangeBonus;
             else if (card is SC_FreeCorrection f2)
-                range += f2.RangeBonus;
-            else if (card is SC_PerfectCorrection p)
-                range += p.RangeBonus;
+            {
+                mods.rangeBonus += f2.RangeBonus;
+                mods.infiniteWindow = mods.infiniteWindow || f2.InfiniteWindow;
+                mods.freeCorrection = mods.freeCorrection || f2.FreeCorrection;
+            }
+            else if (card is SC_DelayWindow d)
+                mods.windowExtension += d.WindowExtension;
         }
-        return range;
-    }
 
-    private int GetWindowExtension()
-    {
-        int extension = 0;
-        foreach (var card in GameManager.Instance.ownedCards)
-        {
-            if (card is SC_DelayWindow d)
-                extension += d.WindowExtension;
-        }
-        return extension;
-    }
-
-    private bool HasInfiniteWindow()
-    {
-        foreach (var card in GameManager.Instance.ownedCards)
-        {
-            if (card is SC_FreeCorrection f && f.InfiniteWindow) return true;
-            if (card is SC_PerfectCorrection p && p.InfiniteWindow) return true;
-        }
-        return false;
-    }
-
-    private bool IsFree()
-    {
-        foreach (var card in GameManager.Instance.ownedCards)
-        {
-            if (card is SC_FreeCorrection f && f.FreeCorrection) return true;
-            if (card is SC_PerfectCorrection p && p.FreeCorrection) return true;
-        }
-        return false;
+        return mods;
     }
 }
