@@ -127,7 +127,7 @@ public class Goal_ThreeOdds : GoalChecker
 
 public class Goal_SmallThreeConsecutive : GoalChecker
 {
-    public override string goalName => "小三连";
+    public override string goalName => "小三张";
     public override int stage => 1;
 
     public override GoalResult Check(List<Card> drawnCards)
@@ -147,7 +147,7 @@ public class Goal_SmallThreeConsecutive : GoalChecker
 
 public class Goal_ThreeSameSuit : GoalChecker
 {
-    public override string goalName => "同花三张";
+    public override string goalName => "三同花";
     public override int stage => 1;
 
     public override GoalResult Check(List<Card> drawnCards)
@@ -187,7 +187,7 @@ public class Goal_ThreeSameSuit : GoalChecker
 
 public class Goal_RedBlack33 : GoalChecker
 {
-    public override string goalName => "红黑3-3";
+    public override string goalName => "红黑各三张";
     public override int stage => 1;
 
     public override GoalResult Check(List<Card> drawnCards)
@@ -232,7 +232,7 @@ public class Goal_RedBlack33 : GoalChecker
 
 public class Goal_AllFourSuits : GoalChecker
 {
-    public override string goalName => "四色齐";
+    public override string goalName => "四花";
     public override int stage => 1;
 
     public override GoalResult Check(List<Card> drawnCards)
@@ -267,7 +267,7 @@ public class Goal_AllFourSuits : GoalChecker
 
 public class Goal_ThreeConsecutive : GoalChecker
 {
-    public override string goalName => "三连数";
+    public override string goalName => "三连顺";
     public override int stage => 1;
 
     public override GoalResult Check(List<Card> drawnCards)
@@ -345,7 +345,7 @@ public class Goal_FourOdds : GoalChecker
 
 public class Goal_SmallFourConsecutive : GoalChecker
 {
-    public override string goalName => "小四连";
+    public override string goalName => "小四张";
     public override int stage => 2;
 
     public override GoalResult Check(List<Card> drawnCards)
@@ -365,7 +365,7 @@ public class Goal_SmallFourConsecutive : GoalChecker
 
 public class Goal_ThreeFaceCards : GoalChecker
 {
-    public override string goalName => "人头三张";
+    public override string goalName => "三人头";
     public override int stage => 2;
 
     public override GoalResult Check(List<Card> drawnCards)
@@ -505,7 +505,7 @@ public class Goal_FiveSameSuit : GoalChecker
 
 public class Goal_FourConsecutive : GoalChecker
 {
-    public override string goalName => "四连数";
+    public override string goalName => "四连顺";
     public override int stage => 3;
 
     public override GoalResult Check(List<Card> drawnCards)
@@ -596,7 +596,7 @@ public class Goal_SixSameSuit : GoalChecker
 
 public class Goal_EvenFourConsecutive : GoalChecker
 {
-    public override string goalName => "偶数四连";
+    public override string goalName => "偶数四连顺";
     public override int stage => 3;
 
     public override GoalResult Check(List<Card> drawnCards)
@@ -655,7 +655,7 @@ public class Goal_EvenFourConsecutive : GoalChecker
 
 public class Goal_FiveConsecutive : GoalChecker
 {
-    public override string goalName => "五连数";
+    public override string goalName => "五连顺";
     public override int stage => 3;
 
     public override GoalResult Check(List<Card> drawnCards)
@@ -711,7 +711,7 @@ public class Goal_FiveConsecutive : GoalChecker
 
 public class Goal_FaceCardThreeSameSuit : GoalChecker
 {
-    public override string goalName => "人头同花三张";
+    public override string goalName => "三人头同花";
     public override int stage => 3;
 
     public override GoalResult Check(List<Card> drawnCards)
@@ -844,7 +844,7 @@ public class Goal_FullHouse : GoalChecker
 
 public class Goal_AllSuitsThree : GoalChecker
 {
-    public override string goalName => "四色各三";
+    public override string goalName => "四花各三张";
     public override int stage => 4;
 
     public override GoalResult Check(List<Card> drawnCards)
@@ -883,7 +883,7 @@ public class Goal_AllSuitsThree : GoalChecker
 
 public class Goal_SixConsecutive : GoalChecker
 {
-    public override string goalName => "六连数";
+    public override string goalName => "六连顺";
     public override int stage => 4;
 
     public override GoalResult Check(List<Card> drawnCards)
