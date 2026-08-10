@@ -45,7 +45,6 @@ public class StageManager : MonoBehaviour
                 count += o.ExtraPeek;
         }
 
-        // 全视之眼：模拟翻顶部44张
         foreach (var card in gm.ownedCards)
         {
             if (card is SC_AllSeeingEye)
@@ -61,7 +60,6 @@ public class StageManager : MonoBehaviour
             }
         }
 
-        // 正常翻预览牌
         DeckManager.Instance.Draw(count);
 
         if (gm.currentGoal.Check(DeckManager.Instance.drawnCards).isAchieved)
@@ -80,25 +78,6 @@ public class StageManager : MonoBehaviour
         var result = GameManager.Instance.currentGoal.Check(DeckManager.Instance.drawnCards);
         if (result.isAchieved)
             isGoalAchieved = true;
-    }
-
-    public void OnFlip(int flipCount, int guessFlips)
-    {
-        if (currentStage == 2 && flipCount >= guessFlips - 3)
-            CorrectionManager.Instance.CloseWindow();
-    }
-
-    public bool CheckFailCondition(int flipCount)
-    {
-        if (currentStage == 3 && flipCount > 25 && !isGoalAchieved)
-            return true;
-        return false;
-    }
-
-    public void OnStrategyUsed(StrategyCard card)
-    {
-        if (currentStage == 4 && card is ActiveCard)
-            DeckManager.Instance.FadeRandomCard();
     }
 
     public void NextLevel()

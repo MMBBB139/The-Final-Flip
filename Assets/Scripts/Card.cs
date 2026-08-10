@@ -1,6 +1,3 @@
-using System.Collections.Generic;
-using UnityEngine;
-
 public class Card
 {
     public enum Suit
@@ -20,13 +17,11 @@ public class Card
     public Suit suit;
     public Rank rank;
     public bool isFaceUp;
-    public bool isFaded;
 
     public Card(Suit suit, Rank rank)
     {
         this.suit = suit;
         this.rank = rank;
         isFaceUp = false;
-        isFaded = false;
     }
 }

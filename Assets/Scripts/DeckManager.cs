@@ -103,13 +103,6 @@ public class DeckManager : MonoBehaviour
         drawnCards.Remove(card);
     }
 
-    public void FadeRandomCard()
-    {
-        if (deck.Count == 0) return;
-        int index = Random.Range(0, deck.Count);
-        deck[index].isFaded = true;
-    }
-
     public void ChangeSuit(Card card, Card.Suit newSuit)
     {
         card.suit = newSuit;

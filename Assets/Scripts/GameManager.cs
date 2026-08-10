@@ -30,7 +30,6 @@ public class GameManager : MonoBehaviour
         StartGame();
     }
 
-    // ==================== 游戏入口 ====================
     public void StartGame()
     {
         chips = 30;
@@ -38,35 +37,28 @@ public class GameManager : MonoBehaviour
         StageManager.Instance.StartStage(1, 1);
     }
 
-    // ==================== 每关开始 ====================
     public void StartStage()
     {
         usedCorrectionThisRound = false;
         isGoalAchieved = false;
         actualFlips = 0;
 
-        // 重置主动牌
         foreach (var card in ownedCards)
             card.ResetForRound();
 
-        // 选目标
         currentGoal = GoalPool.GetRandomGoal(StageManager.Instance.currentStage);
 
-        // 洗牌
         DeckManager.Instance.BuildDeck();
         DeckManager.Instance.Shuffle();
 
-        // 预览
         currentPhase = GamePhase.Preview;
         StageManager.Instance.RunPreview(this);
     }
 
-    // 预览完成后回调
     public void OnPreviewComplete(bool directWin)
     {
         if (directWin)
         {
-            // ForceZeroErrorWin 已经设了 forceZeroError，直接结算
             currentPhase = GamePhase.Result;
             EndStage();
             return;
@@ -75,7 +67,6 @@ public class GameManager : MonoBehaviour
         currentPhase = GamePhase.Guess;
     }
 
-    // ==================== 猜测 ====================
     public void SubmitGuess(int number)
     {
         if (currentPhase != GamePhase.Guess) return;
@@ -86,7 +77,6 @@ public class GameManager : MonoBehaviour
         currentPhase = GamePhase.FlipCards;
     }
 
-    // ==================== 翻牌 ====================
     public void Flip()
     {
         if (currentPhase != GamePhase.FlipCards) return;
@@ -96,7 +86,6 @@ public class GameManager : MonoBehaviour
 
         DeckManager.Instance.Draw(drawCount);
 
-        // 检查目标
         var result = currentGoal.Check(DeckManager.Instance.drawnCards);
         if (result.isAchieved)
         {
@@ -104,19 +93,8 @@ public class GameManager : MonoBehaviour
             StageManager.Instance.isGoalAchieved = true;
         }
 
-        // 层级规则
-        StageManager.Instance.OnFlip(actualFlips, guessFlips);
         CorrectionManager.Instance.OnFlip(actualFlips, guessFlips);
 
-        // 失败检查
-        if (StageManager.Instance.CheckFailCondition(actualFlips))
-        {
-            currentPhase = GamePhase.Result;
-            EndStage();
-            return;
-        }
-
-        // 牌堆翻完
         if (DeckManager.Instance.deck.Count == 0)
         {
             currentPhase = GamePhase.Result;
@@ -131,22 +109,19 @@ public class GameManager : MonoBehaviour
             if (card is SC_ControlSpeed cs)
                 return cs.DrawCount;
         }
-        return 4; // 默认一次翻4张
+        return 4;
     }
 
-    // ==================== 策略牌 ====================
     public void UseStrategyCard(StrategyCard card)
     {
         if (currentPhase != GamePhase.FlipCards) return;
 
         if (card is ActiveCard active)
         {
-            if (active.Execute())
-                StageManager.Instance.OnStrategyUsed(card);
+            active.Execute();
         }
     }
 
-    // ==================== 修正 ====================
     public void UseCorrection(int newGuess)
     {
         if (currentPhase != GamePhase.FlipCards) return;
@@ -163,7 +138,6 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    // ==================== 结算 ====================
     public void EndStage()
     {
         currentPhase = GamePhase.Result;
@@ -191,11 +165,9 @@ public class GameManager : MonoBehaviour
         else
         {
             Debug.Log($"失败！误差{result.error}，容忍度{result.tolerance}。游戏结束。");
-            // TODO: 游戏结束逻辑
             return;
         }
 
-        // 下一关或商店
         if (ShouldOpenShop())
         {
             OpenShop();
@@ -209,7 +181,6 @@ public class GameManager : MonoBehaviour
 
     private bool ShouldOpenShop()
     {
-        // 每层第3关后开商店，第5层只有1关，结束后不开
         return StageManager.Instance.currentLevel == 3 && StageManager.Instance.currentStage < 5;
     }
 
@@ -224,7 +195,6 @@ public class GameManager : MonoBehaviour
         StartStage();
     }
 
-    // ==================== 0误差直接获胜 ====================
     public void ForceZeroErrorWin()
     {
         SettlementManager.Instance.ForceZeroError();
